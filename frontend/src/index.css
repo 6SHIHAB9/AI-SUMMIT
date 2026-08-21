@@ -1,0 +1,52 @@
+:root {
+  --bg-void: #0b0f1a;
+  --bg-surface: #10141f;
+  --card-bg: #151b2c;
+  --card-bg-hover: #1a2135;
+  --border-subtle: #232b40;
+  --text-primary: #eef1f7;
+  --text-secondary: #8b93a7;
+  --text-muted: #5c6478;
+
+  --accent-employee: #6c7cff;
+  --accent-resolver: #2dd6be;
+  --accent-reviewer: #f5a623;
+
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-void);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
