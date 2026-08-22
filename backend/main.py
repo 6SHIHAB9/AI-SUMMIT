@@ -12,13 +12,10 @@ from datetime import datetime, timezone
 import models
 import schemas
 from database import engine, get_db, ensure_schema_columns
+from ai_service import process_ticket
 from constants import DEPARTMENTS, HUMAN_REVIEW, DEFAULT_DEPARTMENT
 
 load_dotenv()
-
-# Initialize Groq client safely
-api_key = os.environ.get("GROQ_API_KEY")
-client = Groq(api_key=api_key) if api_key else None
 
 # Create all database tables and ensure column migrations
 models.Base.metadata.create_all(bind=engine)
@@ -48,64 +45,26 @@ app.add_middleware(
 def create_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
     new_ticket_id = f"INC-{uuid.uuid4().hex[:6].upper()}"
 
-    department_list_str = "\n".join(f'- "{d}"' for d in DEPARTMENTS)
+    ai_data = process_ticket(new_ticket_id, ticket.subject, ticket.description)
+    if not ai_data:
+        ai_data = {
+            "category": "General",
+            "sub_category": "General Inquiry",
+            "priority": "Medium",
+            "sentiment": "Neutral",
+            "urgency": "Medium",
+            "confidence": 0.0,
+            "suggested_resolution": None,
+            "human_approval_required": True,
+            "approval_reason": "Automated processing could not safely evaluate this ticket. Sent for human review.",
+            "routed_to": HUMAN_REVIEW,
+        }
 
-    prompt = f"""
-    You are an AI IT Helpdesk Assistant. Analyze the following support ticket and return a JSON object with these exact keys:
-    - "category": string (e.g., Network, Hardware, Software, Access Management, HR)
-    - "sub_category": string (e.g., VPN, Password Reset, Production Server Access, Laptop)
-    - "priority": string (Low, Medium, High, Critical)
-    - "sentiment": string (Positive, Neutral, Negative)
-    - "urgency": string (Low, Medium, High)
-    - "confidence": float between 0.0 and 1.0
-    - "suggested_resolution": string or null (provide helpful troubleshooting steps if it can be auto-resolved. MUST be null if human_approval_required is true).
-    - "human_approval_required": boolean (true if the request involves security risks, privileged access, financial changes, policy exceptions, or high-risk actions; false otherwise).
-    - "approval_reason": string or null (explanation of why human review is required if true, otherwise null).
-    - "routed_to": string. This MUST be exactly one of the following values, with no variation in spelling or wording:
-    {department_list_str}
-    - "HUMAN_REVIEW" (use this ONLY if human_approval_required is true)
-
-    Never invent a department name. Never use synonyms or abbreviations. Copy one of the values above exactly.
-
-    Ticket Subject: {ticket.subject}
-    Ticket Description: {ticket.description}
-
-    Return ONLY valid JSON. No markdown code blocks, no extra text.
-    """
-
-    try:
-        completion = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1
-        )
-        content = completion.choices[0].message.content.strip()
-
-        if content.startswith("```json"):
-            content = content[7:]
-        if content.endswith("```"):
-            content = content[:-3]
-
-        ai_data = json.loads(content.strip())
-
-        human_approval = bool(ai_data.get("human_approval_required", False))
-        status = "Pending Review" if human_approval else "Open"
-
-        if human_approval:
-            routed_to = HUMAN_REVIEW
-        else:
-            candidate = ai_data.get("routed_to")
-            routed_to = candidate if candidate in DEPARTMENTS else DEFAULT_DEPARTMENT
-
-        suggested_resolution = None if human_approval else ai_data.get("suggested_resolution")
-
-    except Exception as e:
-        print(f"AI Processing Error: {e}")
-        ai_data = {}
-        human_approval = False
-        status = "Open"
-        routed_to = DEFAULT_DEPARTMENT
-        suggested_resolution = "AI processing failed. Routed to general support queue."
+    human_approval = bool(ai_data.get("human_approval_required", False))
+    status = "Pending Review" if human_approval else "Open"
+    routed_to = HUMAN_REVIEW if human_approval else ai_data.get("routed_to", DEFAULT_DEPARTMENT)
+    suggested_resolution = None if human_approval else ai_data.get("suggested_resolution")
+    approval_reason = ai_data.get("approval_reason") if human_approval else None
 
     db_ticket = models.Ticket(
         ticket_id=new_ticket_id,
@@ -122,7 +81,7 @@ def create_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
         confidence=ai_data.get("confidence", 0.90),
         suggested_resolution=suggested_resolution,
         human_approval_required=human_approval,
-        approval_reason=ai_data.get("approval_reason"),
+        approval_reason=approval_reason,
         routed_to=routed_to
     )
 
