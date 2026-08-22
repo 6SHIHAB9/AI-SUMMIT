@@ -28,3 +28,9 @@ class Ticket(Base):
     
     # HITL Reviewer Fields
     rejection_reason = Column(Text, nullable=True)
+
+    # Resolver Fields
+    resolver_comment = Column(Text, nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    resolver_updated_at = Column(DateTime, nullable=True)
+    resolver_rejection_reason = Column(Text, nullable=True)

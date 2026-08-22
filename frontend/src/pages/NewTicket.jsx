@@ -51,7 +51,6 @@ const NewTicket = () => {
             <p style={{ width: '45%', margin: 0 }}><strong>Category:</strong> {submittedTicket.category || 'N/A'}</p>
             <p style={{ width: '45%', margin: 0 }}><strong>Sub-category:</strong> {submittedTicket.sub_category || 'N/A'}</p>
             <p style={{ width: '45%', margin: 0 }}><strong>Priority:</strong> {submittedTicket.priority || 'N/A'}</p>
-            <p style={{ width: '45%', margin: 0 }}><strong>Urgency:</strong> {submittedTicket.urgency || 'N/A'}</p>
             <p style={{ width: '100%', margin: 0 }}><strong>Routed To:</strong> {submittedTicket.routed_to || 'Unassigned'}</p>
           </div>
 

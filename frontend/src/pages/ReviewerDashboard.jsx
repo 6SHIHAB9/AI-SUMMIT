@@ -135,7 +135,6 @@ const ReviewerDashboard = () => {
                   <span><strong>Raised By:</strong> {ticket.raised_by}</span>
                   <span><strong>Cat:</strong> {ticket.category || 'N/A'} {ticket.sub_category && `(${ticket.sub_category})`}</span>
                   <span><strong>Priority:</strong> {ticket.priority || 'N/A'}</span>
-                  <span><strong>Urgency:</strong> {ticket.urgency || 'N/A'}</span>
                 </div>
 
                 <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '1rem', borderRadius: '6px', marginBottom: '1.5rem', border: '1px solid rgba(239, 68, 68, 0.2)' }}>

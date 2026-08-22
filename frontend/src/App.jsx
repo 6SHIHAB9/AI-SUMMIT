@@ -5,6 +5,9 @@ import EmployeeDashboard from './pages/EmployeeDashboard.jsx';
 import NewTicket from './pages/NewTicket.jsx';
 import TicketDetails from './pages/TicketDetails.jsx';
 import ReviewerDashboard from './pages/ReviewerDashboard.jsx';
+import ResolverDashboard from './pages/ResolverDashboard.jsx';
+import ResolverDepartmentTickets from './pages/ResolverDepartmentTickets.jsx';
+import ResolverTicketDetails from './pages/ResolverTicketDetails.jsx';
 
 function App() {
   return (
@@ -14,6 +17,9 @@ function App() {
       <Route path="/employee/new-ticket" element={<NewTicket />} />
       <Route path="/employee/ticket/:ticketId" element={<TicketDetails />} />
       <Route path="/review" element={<ReviewerDashboard />} />
+      <Route path="/resolver" element={<ResolverDashboard />} />
+      <Route path="/resolver/:departmentSlug" element={<ResolverDepartmentTickets />} />
+      <Route path="/resolver/ticket/:ticketId" element={<ResolverTicketDetails />} />
     </Routes>
   );
 }

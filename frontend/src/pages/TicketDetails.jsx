@@ -69,9 +69,8 @@ const TicketDetails = () => {
             <span className="ticket-id" style={{ color: '#94a3b8' }}>{ticket.ticket_id}</span>
           </div>
           <div className="ticket-badges">
-            <span className={`badge ${ticket.status === 'Rejected' ? 'priority-critical' : `status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}`}`}
-                  style={ticket.status === 'Rejected' ? { background: '#7f1d1d', color: '#fca5a5' } : {}}>
-              {ticket.status}
+            <span className={`badge status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}`}>
+              {ticket.status.toUpperCase()}
             </span>
           </div>
         </header>
@@ -82,7 +81,6 @@ const TicketDetails = () => {
           <p style={{ width: '45%', margin: 0 }}><strong>Category:</strong> {ticket.category || 'N/A'}</p>
           <p style={{ width: '45%', margin: 0 }}><strong>Sub-category:</strong> {ticket.sub_category || 'N/A'}</p>
           <p style={{ width: '45%', margin: 0 }}><strong>Priority:</strong> {ticket.priority || 'N/A'}</p>
-          <p style={{ width: '45%', margin: 0 }}><strong>Urgency:</strong> {ticket.urgency || 'N/A'}</p>
           <p style={{ width: '100%', margin: 0 }}><strong>Routed To:</strong> {ticket.routed_to || 'Unassigned'}</p>
         </div>
 
@@ -91,23 +89,45 @@ const TicketDetails = () => {
           <p style={{ color: '#cbd5e1', lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: 0 }}>{ticket.description}</p>
         </div>
 
-        {ticket.status === 'Rejected' ? (
-            <div style={{ background: 'rgba(239, 68, 68, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', marginTop: '2rem' }}>
-                <h3 style={{ color: '#fca5a5', marginTop: 0, marginBottom: '0.5rem' }}>Ticket Rejected</h3>
-                <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}><strong>Reason:</strong> {ticket.rejection_reason}</p>
-            </div>
-        ) : ticket.human_approval_required ? (
-            <div style={{ background: 'rgba(239, 68, 68, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', marginTop: '2rem' }}>
-                <h3 style={{ color: '#fca5a5', marginTop: 0, marginBottom: '0.5rem' }}>Human Approval Required</h3>
-                <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>{ticket.approval_reason}</p>
-            </div>
-        ) : (
-            ticket.suggested_resolution && (
-                <div style={{ background: 'rgba(59, 130, 246, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', marginTop: '2rem' }}>
-                    <h3 style={{ color: '#93c5fd', marginTop: 0, marginBottom: '0.5rem' }}>AI Suggested Resolution</h3>
-                    <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>{ticket.suggested_resolution}</p>
-                </div>
-            )
+        {ticket.status === 'Resolved' && (
+          <div style={{ background: 'rgba(34, 197, 94, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.3)', marginTop: '2rem' }}>
+            <h3 style={{ color: '#86efac', marginTop: 0, marginBottom: '0.5rem' }}>✓ Ticket Resolved</h3>
+            <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>
+              <strong>Resolution:</strong> {ticket.resolver_comment || 'The ticket has been resolved by the support team.'}
+            </p>
+          </div>
+        )}
+
+        {ticket.status === 'In Progress' && ticket.resolver_comment && (
+          <div style={{ background: 'rgba(59, 130, 246, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', marginTop: '2rem' }}>
+            <h3 style={{ color: '#93c5fd', marginTop: 0, marginBottom: '0.5rem' }}>⚡ Ticket In Progress</h3>
+            <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>
+              <strong>Resolver Update:</strong> {ticket.resolver_comment}
+            </p>
+          </div>
+        )}
+
+        {ticket.status === 'Rejected' && (
+          <div style={{ background: 'rgba(239, 68, 68, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', marginTop: '2rem' }}>
+            <h3 style={{ color: '#fca5a5', marginTop: 0, marginBottom: '0.5rem' }}>✕ Ticket Rejected</h3>
+            <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>
+              <strong>Reason:</strong> {ticket.rejection_reason || ticket.resolver_rejection_reason || ticket.resolver_comment || 'No rejection reason provided.'}
+            </p>
+          </div>
+        )}
+
+        {ticket.human_approval_required && ticket.status === 'Pending Review' && (
+          <div style={{ background: 'rgba(239, 68, 68, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', marginTop: '2rem' }}>
+            <h3 style={{ color: '#fca5a5', marginTop: 0, marginBottom: '0.5rem' }}>Human Approval Required</h3>
+            <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>{ticket.approval_reason}</p>
+          </div>
+        )}
+
+        {ticket.suggested_resolution && !ticket.human_approval_required && (
+          <div style={{ background: 'rgba(59, 130, 246, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', marginTop: '2rem' }}>
+            <h3 style={{ color: '#93c5fd', marginTop: 0, marginBottom: '0.5rem' }}>AI Suggested Resolution</h3>
+            <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>{ticket.suggested_resolution}</p>
+          </div>
         )}
 
         {ticket.attachment && (

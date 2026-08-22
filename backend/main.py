@@ -8,20 +8,32 @@ from sqlalchemy.orm import Session
 from groq import Groq
 from dotenv import load_dotenv
 
+from datetime import datetime, timezone
 import models
 import schemas
-from database import engine, get_db
+from database import engine, get_db, ensure_schema_columns
 from constants import DEPARTMENTS, HUMAN_REVIEW, DEFAULT_DEPARTMENT
 
 load_dotenv()
 
-# Initialize Groq client
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+# Initialize Groq client safely
+api_key = os.environ.get("GROQ_API_KEY")
+client = Groq(api_key=api_key) if api_key else None
 
-# Create all database tables
+# Create all database tables and ensure column migrations
 models.Base.metadata.create_all(bind=engine)
+ensure_schema_columns()
 
 app = FastAPI(title="Intelligent Helpdesk API")
+
+def resolve_department(dept_str: str):
+    """Matches a department name from string or slug format."""
+    for d in DEPARTMENTS:
+        if d.lower() == dept_str.lower():
+            return d
+        if d.lower().replace(" ", "-") == dept_str.lower():
+            return d
+    return None
 
 # Configure CORS for React frontend
 app.add_middleware(
@@ -186,6 +198,103 @@ def modify_ticket(ticket_id: str, payload: schemas.TicketModify, db: Session = D
     # unchanged — Modify only edits triage fields. Approve is a separate,
     # explicit action that opens the ticket and sets the final department.
     # Urgency is no longer reviewer-editable — it stays as the AI's original value.
+
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+# ==============================================================================
+# RESOLVER ENDPOINTS
+# ==============================================================================
+
+@app.get("/resolver/departments", response_model=List[schemas.DepartmentCountResponse])
+def get_resolver_departments(db: Session = Depends(get_db)):
+    """Returns the 8 departments and the count of pending tickets (Open or In Progress) in each."""
+    dept_counts = []
+    for dept in DEPARTMENTS:
+        count = db.query(models.Ticket).filter(
+            models.Ticket.routed_to == dept,
+            models.Ticket.status.in_(["Open", "In Progress"])
+        ).count()
+        dept_counts.append(schemas.DepartmentCountResponse(
+            department=dept,
+            ticket_count=count
+        ))
+    return dept_counts
+
+@app.get("/resolver/tickets/{department_or_id}", response_model=List[schemas.TicketResponse])
+def get_resolver_department_tickets(department_or_id: str, db: Session = Depends(get_db)):
+    """
+    Returns tickets assigned to a given department that are Open or In Progress.
+    If the parameter is a direct ticket ID, returns a list containing that ticket.
+    """
+    resolved_dept = resolve_department(department_or_id)
+    if resolved_dept:
+        return db.query(models.Ticket).filter(
+            models.Ticket.routed_to == resolved_dept,
+            models.Ticket.status.in_(["Open", "In Progress"])
+        ).order_by(models.Ticket.created_at.desc()).all()
+
+    # Check if parameter is a specific ticket_id
+    ticket = db.query(models.Ticket).filter(models.Ticket.ticket_id == department_or_id).first()
+    if ticket:
+        return [ticket]
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Department or ticket '{department_or_id}' not found. Must be one of: {', '.join(DEPARTMENTS)}"
+    )
+
+@app.get("/resolver/ticket/{ticket_id}", response_model=schemas.TicketResponse)
+def get_resolver_ticket(ticket_id: str, db: Session = Depends(get_db)):
+    """Returns complete ticket details for a resolver."""
+    ticket = db.query(models.Ticket).filter(models.Ticket.ticket_id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return ticket
+
+@app.put("/resolver/tickets/{ticket_id}/status", response_model=schemas.TicketResponse)
+def update_resolver_ticket_status(ticket_id: str, payload: schemas.ResolverStatusUpdate, db: Session = Depends(get_db)):
+    """
+    Updates the status and resolver comments/reasons for a ticket.
+    Allowed statuses: Open, In Progress, Resolved, Rejected.
+    Resolved and Rejected require a mandatory comment.
+    """
+    ticket = db.query(models.Ticket).filter(models.Ticket.ticket_id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    if ticket.status == "Pending Review" or ticket.routed_to == HUMAN_REVIEW:
+        raise HTTPException(
+            status_code=400,
+            detail="Ticket is pending human review and cannot be updated by a resolver."
+        )
+
+    now = datetime.now(timezone.utc)
+    new_status = payload.status
+    comment = payload.comment.strip() if payload.comment else None
+
+    if new_status == "Resolved":
+        ticket.status = "Resolved"
+        ticket.resolver_comment = comment
+        ticket.resolved_at = now
+        ticket.resolver_updated_at = now
+    elif new_status == "Rejected":
+        ticket.status = "Rejected"
+        ticket.resolver_comment = comment
+        ticket.resolver_rejection_reason = comment
+        ticket.rejection_reason = comment
+        ticket.resolver_updated_at = now
+    elif new_status == "In Progress":
+        ticket.status = "In Progress"
+        if comment:
+            ticket.resolver_comment = comment
+        ticket.resolver_updated_at = now
+    elif new_status == "Open":
+        ticket.status = "Open"
+        if comment:
+            ticket.resolver_comment = comment
+        ticket.resolver_updated_at = now
 
     db.commit()
     db.refresh(ticket)

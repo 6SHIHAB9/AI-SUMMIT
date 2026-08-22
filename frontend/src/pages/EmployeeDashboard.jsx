@@ -97,7 +97,6 @@ const EmployeeDashboard = () => {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
                   <span><strong>Cat:</strong> {ticket.category || 'N/A'} {ticket.sub_category && `(${ticket.sub_category})`}</span>
                   <span><strong>Priority:</strong> {ticket.priority || 'N/A'}</span>
-                  <span><strong>Urgency:</strong> {ticket.urgency || 'N/A'}</span>
                 </div>
 
                 <div className="ticket-card-bottom">
@@ -105,10 +104,8 @@ const EmployeeDashboard = () => {
                     <span className={`badge status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}`}>
                       {ticket.status}
                     </span>
-                    {ticket.human_approval_required ? (
+                    {ticket.human_approval_required && ticket.status === 'Pending Review' ? (
                       <span className="badge" style={{ background: '#7f1d1d', color: '#fca5a5' }}>HUMAN REVIEW REQUIRED</span>
-                    ) : ticket.suggested_resolution ? (
-                      <span className="badge" style={{ background: '#1e3a8a', color: '#93c5fd' }}>AI Resolution Available</span>
                     ) : null}
                   </div>
                   <span className="ticket-department">
