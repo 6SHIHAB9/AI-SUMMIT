@@ -95,8 +95,10 @@ const EmployeeDashboard = () => {
                 <h3 className="ticket-subject">{ticket.subject}</h3>
                 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
-                  <span><strong>Cat:</strong> {ticket.category || 'N/A'} {ticket.sub_category && `(${ticket.sub_category})`}</span>
+                  <span><strong>Category:</strong> {ticket.category || 'N/A'} {ticket.sub_category && `(${ticket.sub_category})`}</span>
                   <span><strong>Priority:</strong> {ticket.priority || 'N/A'}</span>
+                  <span><strong>Urgency:</strong> {ticket.urgency || 'N/A'}</span>
+                  <span><strong>Sentiment:</strong> {ticket.sentiment || 'N/A'}</span>
                 </div>
 
                 <div className="ticket-card-bottom">

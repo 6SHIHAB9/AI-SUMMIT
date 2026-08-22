@@ -15,6 +15,11 @@ class TicketReject(BaseModel):
 
 class TicketApprove(BaseModel):
     routed_to: Department = Field(..., description="Fixed department to route the ticket to upon approval")
+    category: Optional[str] = None
+    sub_category: Optional[str] = None
+    priority: Optional[Priority] = None
+    urgency: Optional[str] = None
+    sentiment: Optional[str] = None
 
 class TicketModify(BaseModel):
     category: str

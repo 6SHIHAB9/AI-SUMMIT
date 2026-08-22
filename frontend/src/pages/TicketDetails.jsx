@@ -81,7 +81,9 @@ const TicketDetails = () => {
           <p style={{ width: '45%', margin: 0 }}><strong>Category:</strong> {ticket.category || 'N/A'}</p>
           <p style={{ width: '45%', margin: 0 }}><strong>Sub-category:</strong> {ticket.sub_category || 'N/A'}</p>
           <p style={{ width: '45%', margin: 0 }}><strong>Priority:</strong> {ticket.priority || 'N/A'}</p>
-          <p style={{ width: '100%', margin: 0 }}><strong>Routed To:</strong> {ticket.routed_to || 'Unassigned'}</p>
+          <p style={{ width: '45%', margin: 0 }}><strong>Urgency:</strong> {ticket.urgency || 'N/A'}</p>
+          <p style={{ width: '45%', margin: 0 }}><strong>Sentiment:</strong> {ticket.sentiment || 'N/A'}</p>
+          <p style={{ width: '45%', margin: 0 }}><strong>Routed To:</strong> {ticket.routed_to || 'Unassigned'}</p>
         </div>
 
         <div className="ticket-body">

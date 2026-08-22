@@ -210,6 +210,10 @@ export default function ResolverTicketDetails() {
             <span className="resolver-meta-value">{ticket.priority || 'N/A'}</span>
           </div>
           <div className="resolver-meta-item">
+            <span className="resolver-meta-label">Urgency</span>
+            <span className="resolver-meta-value">{ticket.urgency || 'N/A'}</span>
+          </div>
+          <div className="resolver-meta-item">
             <span className="resolver-meta-label">Sentiment</span>
             <span className="resolver-meta-value">{ticket.sentiment || 'N/A'}</span>
           </div>

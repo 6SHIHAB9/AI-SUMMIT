@@ -120,6 +120,27 @@ def approve_ticket(ticket_id: str, payload: schemas.TicketApprove, db: Session =
     ticket.human_approval_required = False
     ticket.routed_to = payload.routed_to.value
 
+    # Update category, sub_category, priority, urgency, sentiment
+    if payload.category and payload.category.strip():
+        ticket.category = payload.category.strip()
+    elif not ticket.category or ticket.category.strip() in ["General", ""]:
+        ticket.category = payload.routed_to.value
+
+    if payload.sub_category and payload.sub_category.strip():
+        ticket.sub_category = payload.sub_category.strip()
+    elif not ticket.sub_category or ticket.sub_category.strip() in ["General Inquiry", ""]:
+        ticket.sub_category = f"{payload.routed_to.value} General"
+
+    # Reviewer-editable fields
+    if payload.priority:
+        ticket.priority = payload.priority.value
+
+    if payload.urgency and payload.urgency.strip():
+        ticket.urgency = payload.urgency.strip().capitalize()
+
+    if payload.sentiment and payload.sentiment.strip():
+        ticket.sentiment = payload.sentiment.strip().capitalize()
+
     db.commit()
     db.refresh(ticket)
     return ticket
