@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './Employee.css';
 import { DEPARTMENTS } from '../utils/departments.js';
+import { PRIORITIES } from '../utils/priorities.js';
 
 const ReviewerDashboard = () => {
   const navigate = useNavigate();
@@ -40,7 +41,6 @@ const ReviewerDashboard = () => {
         category: ticket.category || '',
         sub_category: ticket.sub_category || '',
         priority: ticket.priority || '',
-        urgency: ticket.urgency || '',
       });
     } else if (type === 'reject') {
       setFormData({ reason: '' });
@@ -206,11 +206,17 @@ const ReviewerDashboard = () => {
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Priority</label>
-                    <input type="text" required style={{ width: '100%', padding: '0.5rem', background: '#0f172a', color: 'white', border: '1px solid #334155' }} value={formData.priority} onChange={(e) => setFormData({...formData, priority: e.target.value})} />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Urgency</label>
-                    <input type="text" required style={{ width: '100%', padding: '0.5rem', background: '#0f172a', color: 'white', border: '1px solid #334155' }} value={formData.urgency} onChange={(e) => setFormData({...formData, urgency: e.target.value})} />
+                    <select
+                      required
+                      style={selectStyle}
+                      value={formData.priority}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    >
+                      <option value="" disabled>Select Priority</option>
+                      {PRIORITIES.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               )}

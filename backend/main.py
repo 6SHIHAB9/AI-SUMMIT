@@ -38,7 +38,6 @@ def create_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
 
     department_list_str = "\n".join(f'- "{d}"' for d in DEPARTMENTS)
 
-    # Prompt the Groq model for intelligent triage and human-in-the-loop evaluation
     prompt = f"""
     You are an AI IT Helpdesk Assistant. Analyze the following support ticket and return a JSON object with these exact keys:
     - "category": string (e.g., Network, Hardware, Software, Access Management, HR)
@@ -64,34 +63,31 @@ def create_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
 
     try:
         completion = client.chat.completions.create(
-            model="openai/gpt-oss-120b", # Using your specified Groq model
+            model="openai/gpt-oss-120b",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1
         )
         content = completion.choices[0].message.content.strip()
-        
-        # Clean up potential markdown formatting if the model adds it
+
         if content.startswith("```json"):
             content = content[7:]
         if content.endswith("```"):
             content = content[:-3]
-        
+
         ai_data = json.loads(content.strip())
-        
+
         human_approval = bool(ai_data.get("human_approval_required", False))
         status = "Pending Review" if human_approval else "Open"
 
         if human_approval:
             routed_to = HUMAN_REVIEW
         else:
-            # Server-side safety net: never trust the AI's routed_to blindly.
             candidate = ai_data.get("routed_to")
             routed_to = candidate if candidate in DEPARTMENTS else DEFAULT_DEPARTMENT
 
         suggested_resolution = None if human_approval else ai_data.get("suggested_resolution")
 
     except Exception as e:
-        # Fallback handling if AI fails or rate limits
         print(f"AI Processing Error: {e}")
         ai_data = {}
         human_approval = False
@@ -117,7 +113,7 @@ def create_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
         approval_reason=ai_data.get("approval_reason"),
         routed_to=routed_to
     )
-    
+
     db.add(db_ticket)
     db.commit()
     db.refresh(db_ticket)
@@ -148,11 +144,11 @@ def approve_ticket(ticket_id: str, payload: schemas.TicketApprove, db: Session =
         raise HTTPException(status_code=404, detail="Ticket not found")
     if ticket.status != "Pending Review":
         raise HTTPException(status_code=400, detail="Ticket is not pending review.")
-    
+
     ticket.status = "Open"
     ticket.human_approval_required = False
     ticket.routed_to = payload.routed_to.value
-    
+
     db.commit()
     db.refresh(ticket)
     return ticket
@@ -164,12 +160,12 @@ def reject_ticket(ticket_id: str, payload: schemas.TicketReject, db: Session = D
         raise HTTPException(status_code=404, detail="Ticket not found")
     if ticket.status != "Pending Review":
         raise HTTPException(status_code=400, detail="Ticket is not pending review.")
-    
+
     ticket.status = "Rejected"
     ticket.human_approval_required = False
     ticket.routed_to = "REJECTED"
     ticket.rejection_reason = payload.reason
-    
+
     db.commit()
     db.refresh(ticket)
     return ticket
@@ -184,12 +180,12 @@ def modify_ticket(ticket_id: str, payload: schemas.TicketModify, db: Session = D
 
     ticket.category = payload.category
     ticket.sub_category = payload.sub_category
-    ticket.priority = payload.priority
-    ticket.urgency = payload.urgency
+    ticket.priority = payload.priority.value
 
     # Status, human_approval_required, and routed_to are intentionally left
     # unchanged — Modify only edits triage fields. Approve is a separate,
     # explicit action that opens the ticket and sets the final department.
+    # Urgency is no longer reviewer-editable — it stays as the AI's original value.
 
     db.commit()
     db.refresh(ticket)

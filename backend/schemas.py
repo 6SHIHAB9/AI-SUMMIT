@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
-from constants import Department
+from constants import Department, Priority
 
 class TicketCreate(BaseModel):
     subject: str = Field(..., min_length=1)
@@ -19,8 +19,7 @@ class TicketApprove(BaseModel):
 class TicketModify(BaseModel):
     category: str
     sub_category: str
-    priority: str
-    urgency: str
+    priority: Priority
 
 class TicketResponse(BaseModel):
     ticket_id: str
