@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import './Employee.css';
 
 const NewTicket = () => {
@@ -69,7 +70,9 @@ const NewTicket = () => {
           ) : submittedTicket.suggested_resolution ? (
              <div style={{ background: 'rgba(59, 130, 246, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', marginTop: '1.5rem' }}>
                <h3 style={{ color: '#93c5fd', margin: '0 0 0.5rem 0' }}>AI Suggested Resolution</h3>
-               <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#f8fafc' }}>{submittedTicket.suggested_resolution}</p>
+               <div style={{ margin: 0, color: '#f8fafc', fontSize: '0.95rem', lineHeight: '1.5' }} className="markdown-body">
+                 <ReactMarkdown>{submittedTicket.suggested_resolution}</ReactMarkdown>
+               </div>
              </div>
           ) : (
              <div style={{ background: 'rgba(100, 116, 139, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.3)', marginTop: '1.5rem' }}>

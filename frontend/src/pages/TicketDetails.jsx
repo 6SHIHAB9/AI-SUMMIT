@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import './Employee.css';
 
 const TicketDetails = () => {
@@ -11,6 +12,7 @@ const TicketDetails = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const fetchTicketDetails = async () => {
       try {
         const response = await fetch(`http://localhost:8000/tickets/${ticketId}`);
@@ -128,7 +130,9 @@ const TicketDetails = () => {
         {!ticket.human_approval_required && ticket.suggested_resolution ? (
           <div style={{ background: 'rgba(59, 130, 246, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', marginTop: '2rem' }}>
             <h3 style={{ color: '#93c5fd', marginTop: 0, marginBottom: '0.5rem' }}>AI Suggested Resolution</h3>
-            <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>{ticket.suggested_resolution}</p>
+            <div style={{ margin: 0, color: '#f8fafc', fontSize: '0.95rem', lineHeight: '1.5' }} className="markdown-body">
+              <ReactMarkdown>{ticket.suggested_resolution}</ReactMarkdown>
+            </div>
           </div>
         ) : !ticket.human_approval_required && (
           <div style={{ background: 'rgba(100, 116, 139, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.3)', marginTop: '2rem' }}>

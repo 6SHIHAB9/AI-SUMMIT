@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import './Resolver.css';
 import './Employee.css';
 import { departmentToSlug } from '../utils/departments.js';
@@ -243,7 +244,26 @@ export default function ResolverTicketDetails() {
         {ticket.suggested_resolution ? (
           <div className="resolver-ai-box" style={{ margin: '1.5rem 0' }}>
             <h4>🤖 AI Suggested Troubleshooting Resolution</h4>
-            <p>{ticket.suggested_resolution}</p>
+            <div style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }} className="markdown-body">
+              <ReactMarkdown>{ticket.suggested_resolution}</ReactMarkdown>
+            </div>
+            {ticket.kb_sources && (
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(45, 214, 190, 0.3)' }}>
+                <h5 style={{ color: '#2dd6be', margin: '0 0 0.25rem 0', fontSize: '0.85rem' }}>Knowledge Base Source:</h5>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#cbd5e1', fontSize: '0.85rem' }}>
+                  {(() => {
+                    try {
+                      const sources = JSON.parse(ticket.kb_sources);
+                      return sources.map((s, idx) => (
+                        <li key={idx}>{s.source}</li>
+                      ));
+                    } catch (e) {
+                      return <li>{ticket.kb_sources}</li>;
+                    }
+                  })()}
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           <div className="resolver-ai-box" style={{ margin: '1.5rem 0', background: 'rgba(100, 116, 139, 0.15)', borderColor: 'rgba(100, 116, 139, 0.3)' }}>

@@ -146,12 +146,7 @@ export default function ResolverDepartmentTickets() {
                   <span><strong>Priority:</strong> {ticket.priority || 'N/A'}</span>
                 </div>
 
-                {ticket.suggested_resolution && (
-                  <div className="resolver-ai-box">
-                    <h4>🤖 AI Suggested Resolution:</h4>
-                    <p>{ticket.suggested_resolution}</p>
-                  </div>
-                )}
+
 
                 <div className="ticket-card-bottom" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid #1e293b' }}>
                   <div className="ticket-badges">
