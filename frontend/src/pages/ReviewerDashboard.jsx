@@ -176,8 +176,34 @@ const ReviewerDashboard = () => {
 
                 {/* Attachment */}
                 {ticket.attachment && (
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-                    <strong>Attachment:</strong> {ticket.attachment}
+                  <div style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+                    <strong style={{ display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Attachment:</strong>
+                    <img
+                      src={`http://localhost:8000/uploads/${ticket.attachment}`}
+                      alt="Attachment"
+                      onClick={(e) => {
+                        const overlay = document.createElement('div');
+                        overlay.className = 'modal-overlay';
+                        overlay.style.zIndex = '9999';
+                        overlay.onclick = () => document.body.removeChild(overlay);
+                        
+                        const img = document.createElement('img');
+                        img.src = e.target.src;
+                        img.style.maxWidth = '90vw';
+                        img.style.maxHeight = '90vh';
+                        img.style.objectFit = 'contain';
+                        img.style.borderRadius = 'var(--radius-md)';
+                        img.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.5)';
+                        
+                        overlay.appendChild(img);
+                        document.body.appendChild(overlay);
+                      }}
+                      style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', cursor: 'zoom-in' }}
+                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                    />
+                    <div style={{ display: 'none', fontSize: '0.78rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                      {ticket.attachment}
+                    </div>
                   </div>
                 )}
 

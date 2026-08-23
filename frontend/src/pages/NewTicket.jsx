@@ -14,6 +14,29 @@ const NewTicket = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
+
+    let uploadedFilename = null;
+    if (formData.attachment) {
+      const uploadData = new FormData();
+      uploadData.append('file', formData.attachment);
+      try {
+        const upRes = await fetch('http://localhost:8000/upload', {
+          method: 'POST',
+          body: uploadData,
+        });
+        if (!upRes.ok) {
+          const errData = await upRes.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Failed to upload attachment. Only PNG, JPG, JPEG, WEBP allowed (Max 10MB).');
+        }
+        const upData = await upRes.json();
+        uploadedFilename = upData.filename;
+      } catch (err) {
+        setError(err.message);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const res = await fetch('http://localhost:8000/tickets', {
         method: 'POST',
@@ -21,7 +44,7 @@ const NewTicket = () => {
         body: JSON.stringify({
           subject: formData.subject,
           description: formData.description,
-          attachment: formData.attachment ? formData.attachment.name : null,
+          attachment: uploadedFilename,
         }),
       });
       if (!res.ok) throw new Error('Failed to submit ticket. Please try again.');
@@ -201,14 +224,43 @@ const NewTicket = () => {
                 <Paperclip size={12} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} />
                 Attachment <span className="optional">(optional)</span>
               </label>
-              <input
-                id="attachment"
-                type="file"
-                className="form-file-input"
-                onChange={(e) => setFormData({ ...formData, attachment: e.target.files[0] })}
-                disabled={isSubmitting}
-              />
-              <span className="form-hint">Screenshots, logs, or relevant files</span>
+              {!formData.attachment ? (
+                <>
+                  <input
+                    id="attachment"
+                    type="file"
+                    className="form-file-input"
+                    accept="image/png, image/jpeg, image/webp"
+                    onChange={(e) => setFormData({ ...formData, attachment: e.target.files[0] })}
+                    disabled={isSubmitting}
+                  />
+                  <span className="form-hint">Screenshots or images (PNG, JPG, WEBP)</span>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.25rem' }}>
+                  <img
+                    src={URL.createObjectURL(formData.attachment)}
+                    alt="Preview"
+                    style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {formData.attachment.name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {(formData.attachment.size / 1024).toFixed(1)} KB
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn--secondary btn--sm"
+                    onClick={() => setFormData({ ...formData, attachment: null })}
+                    disabled={isSubmitting}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '1px solid var(--border-light)', marginTop: '0.5rem' }}>

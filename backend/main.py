@@ -2,7 +2,9 @@ import os
 import json
 import uuid
 from typing import List
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi.staticfiles import StaticFiles
+import shutil
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from groq import Groq
@@ -48,6 +50,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+UPLOAD_DIR = 'uploads'
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount('/uploads', StaticFiles(directory=UPLOAD_DIR), name='uploads')
+
+@app.post('/upload')
+def upload_file(file: UploadFile = File(...)):
+    ext = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
+    if ext not in ['png', 'jpg', 'jpeg', 'webp']:
+        raise HTTPException(status_code=400, detail='Unsupported file type. Only PNG, JPG, JPEG, WEBP are allowed.')
+    unique_filename = f"{uuid.uuid4().hex}.{ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    with open(file_path, 'wb') as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {'filename': unique_filename}
 
 @app.post("/tickets", response_model=schemas.TicketResponse)
 def create_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
@@ -201,9 +219,9 @@ def modify_ticket(ticket_id: str, payload: schemas.TicketModify, db: Session = D
     ticket.priority = payload.priority.value
 
     # Status, human_approval_required, and routed_to are intentionally left
-    # unchanged — Modify only edits triage fields. Approve is a separate,
+    # unchanged â€” Modify only edits triage fields. Approve is a separate,
     # explicit action that opens the ticket and sets the final department.
-    # Urgency is no longer reviewer-editable — it stays as the AI's original value.
+    # Urgency is no longer reviewer-editable â€” it stays as the AI's original value.
 
     db.commit()
     db.refresh(ticket)
