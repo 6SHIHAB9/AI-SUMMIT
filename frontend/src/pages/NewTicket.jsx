@@ -10,10 +10,13 @@ const NewTicket = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [rejectionReason, setRejectionReason] = useState(null);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
+    setRejectionReason(null);
 
     let uploadedFilename = null;
     if (formData.attachment) {
@@ -47,7 +50,17 @@ const NewTicket = () => {
           attachment: uploadedFilename,
         }),
       });
-      if (!res.ok) throw new Error('Failed to submit ticket. Please try again.');
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        if (errData.detail && typeof errData.detail === 'string' && errData.detail.startsWith('INVALID_TICKET:')) {
+          setRejectionReason(errData.detail.replace('INVALID_TICKET:', ''));
+          setIsSubmitting(false);
+          return;
+        }
+        throw new Error(errData.detail || 'Failed to submit ticket. Please try again.');
+      }
+      
       setSubmittedTicket(await res.json());
       window.scrollTo(0, 0);
     } catch (err) {
@@ -184,95 +197,103 @@ const NewTicket = () => {
           </div>
         )}
 
-        <div className="card" style={{ padding: '1.35rem' }}>
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="subject">
-                Subject <span className="required">*</span>
-              </label>
-              <input
-                id="subject"
-                type="text"
-                className="form-input"
-                required
-                placeholder="Brief summary of the issue"
-                value={formData.subject}
-                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                disabled={isSubmitting}
-              />
+        {rejectionReason ? (
+            <div className="card" style={{ padding: '2rem 1.5rem', textAlign: 'center', borderTop: '3px solid var(--status-rejected)' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Ticket Not Created</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.6' }}>{rejectionReason}</p>
+              <button className="btn btn--primary" onClick={() => setRejectionReason(null)}>Edit Request</button>
             </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="description">
-                Description <span className="required">*</span>
-              </label>
-              <textarea
-                id="description"
-                className="form-textarea"
-                required
-                rows="6"
-                placeholder="Provide as much detail as possible — steps taken, error messages, affected systems..."
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                disabled={isSubmitting}
-                style={{ minHeight: '130px' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="attachment">
-                <Paperclip size={12} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} />
-                Attachment <span className="optional">(optional)</span>
-              </label>
-              {!formData.attachment ? (
-                <>
+          ) : (
+            <div className="card" style={{ padding: '1.35rem' }}>
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="subject">
+                    Subject <span className="required">*</span>
+                  </label>
                   <input
-                    id="attachment"
-                    type="file"
-                    className="form-file-input"
-                    accept="image/png, image/jpeg, image/webp"
-                    onChange={(e) => setFormData({ ...formData, attachment: e.target.files[0] })}
+                    id="subject"
+                    type="text"
+                    className="form-input"
+                    required
+                    placeholder="Brief summary of the issue"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     disabled={isSubmitting}
                   />
-                  <span className="form-hint">Screenshots or images (PNG, JPG, WEBP)</span>
-                </>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.25rem' }}>
-                  <img
-                    src={URL.createObjectURL(formData.attachment)}
-                    alt="Preview"
-                    style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {formData.attachment.name}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {(formData.attachment.size / 1024).toFixed(1)} KB
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn--secondary btn--sm"
-                    onClick={() => setFormData({ ...formData, attachment: null })}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="description">
+                    Description <span className="required">*</span>
+                  </label>
+                  <textarea
+                    id="description"
+                    className="form-textarea"
+                    required
+                    rows="6"
+                    placeholder="Provide as much detail as possible — steps taken, error messages, affected systems..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     disabled={isSubmitting}
-                  >
-                    Remove
+                    style={{ minHeight: '130px' }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="attachment">
+                    <Paperclip size={12} style={{ display: 'inline', marginRight: '0.25rem', verticalAlign: 'middle' }} />
+                    Attachment <span className="optional">(optional)</span>
+                  </label>
+                  {!formData.attachment ? (
+                    <>
+                      <input
+                        id="attachment"
+                        type="file"
+                        className="form-file-input"
+                        accept="image/png, image/jpeg, image/webp"
+                        onChange={(e) => setFormData({ ...formData, attachment: e.target.files[0] })}
+                        disabled={isSubmitting}
+                      />
+                      <span className="form-hint">Screenshots or images (PNG, JPG, WEBP)</span>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.25rem' }}>
+                      <img
+                        src={URL.createObjectURL(formData.attachment)}
+                        alt="Preview"
+                        style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {formData.attachment.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {(formData.attachment.size / 1024).toFixed(1)} KB
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn--secondary btn--sm"
+                        onClick={() => setFormData({ ...formData, attachment: null })}
+                        disabled={isSubmitting}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '1px solid var(--border-light)', marginTop: '0.5rem' }}>
+                  <button type="button" className="btn btn--secondary" onClick={() => navigate('/employee')} disabled={isSubmitting}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn--primary btn--lg" disabled={isSubmitting}>
+                    {isSubmitting ? 'Processing…' : 'Submit Ticket'}
                   </button>
                 </div>
-              )}
+              </form>
             </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '1px solid var(--border-light)', marginTop: '0.5rem' }}>
-              <button type="button" className="btn btn--secondary" onClick={() => navigate('/employee')} disabled={isSubmitting}>
-                Cancel
-              </button>
-              <button type="submit" className="btn btn--primary btn--lg" disabled={isSubmitting}>
-                {isSubmitting ? 'Processing…' : 'Submit Ticket'}
-              </button>
-            </div>
-          </form>
-        </div>
+          )}
       </div>
     </div>
   );

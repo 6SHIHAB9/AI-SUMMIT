@@ -72,6 +72,10 @@ def create_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
     new_ticket_id = f"INC-{uuid.uuid4().hex[:6].upper()}"
 
     ai_data = process_ticket(new_ticket_id, ticket.subject, ticket.description)
+    if ai_data and not ai_data.get("ticket_valid", True):
+        reason = ai_data.get("rejection_reason") or "Your request is too vague. Please provide more details."
+        raise HTTPException(status_code=400, detail=f"INVALID_TICKET:{reason}")
+
     if not ai_data:
         ai_data = {
             "category": "General",
