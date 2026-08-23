@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { DEPARTMENTS, DEPARTMENT_ICONS, departmentToSlug } from '../utils/departments.js';
+import { Layers, AlertCircle, ChevronRight } from 'lucide-react';
 
 export default function ResolverDashboard() {
   const navigate = useNavigate();
@@ -32,18 +33,18 @@ export default function ResolverDashboard() {
     <div className="page">
       <nav className="topbar">
         <Link to="/" className="topbar__logo">
-          <span className="topbar__logo-dot" />
+          <div className="topbar__logo-mark">TCS</div>
           IT Helpdesk
         </Link>
         <div className="topbar__divider" />
         <span className="topbar__section">Ticket Resolver</span>
         <div className="topbar__spacer" />
         {!loading && !error && total > 0 && (
-          <span className="stat-chip stat-chip--active">
+          <span className="stat-chip stat-chip--active" style={{ marginRight: '0.5rem' }}>
             {total} pending
           </span>
         )}
-        <Link to="/" className="topbar__nav-back" style={{ marginLeft: '0.5rem' }}>← Home</Link>
+        <Link to="/" className="topbar__nav-back">← Home</Link>
       </nav>
 
       <div className="main-content main-content--wide">
@@ -54,10 +55,11 @@ export default function ResolverDashboard() {
           </div>
         </div>
 
+        {/* Loading */}
         {loading && (
           <div className="dept-grid">
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} style={{ height: '72px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} style={{ height: '64px', background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)' }}>
                 <div className="skeleton" style={{ height: '100%', borderRadius: 'var(--radius-lg)' }} />
               </div>
             ))}
@@ -65,14 +67,16 @@ export default function ResolverDashboard() {
         )}
 
         {error && !loading && (
-          <div className="alert alert--error">{error}</div>
+          <div className="alert alert--error">
+            <AlertCircle size={14} />
+            {error}
+          </div>
         )}
 
         {!loading && !error && (
           <div className="dept-grid">
             {DEPARTMENTS.map((dept) => {
               const count = departmentCounts[dept] || 0;
-              const icon = DEPARTMENT_ICONS[dept] || '📁';
               const slug = departmentToSlug(dept);
 
               return (
@@ -84,14 +88,16 @@ export default function ResolverDashboard() {
                   onClick={() => navigate(`/resolver/${slug}`)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/resolver/${slug}`); }}
                 >
-                  <span className="dept-card__icon">{icon}</span>
+                  <div className="dept-card__icon">
+                    <Layers size={15} strokeWidth={1.5} />
+                  </div>
                   <div className="dept-card__body">
                     <div className="dept-card__name">{dept}</div>
                     <div className={`dept-card__count ${count > 0 ? 'dept-card__count--active' : ''}`}>
                       {count} {count === 1 ? 'ticket' : 'tickets'}
                     </div>
                   </div>
-                  <span className="dept-card__chevron">›</span>
+                  <ChevronRight size={14} className="dept-card__chevron" />
                 </div>
               );
             })}

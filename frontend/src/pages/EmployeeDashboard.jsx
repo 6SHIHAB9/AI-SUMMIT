@@ -1,24 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Plus, ChevronRight, AlertCircle, InboxIcon } from 'lucide-react';
 
 const statusBadgeClass = (status) => {
-  switch (status) {
-    case 'Open':           return 'badge badge--open';
-    case 'In Progress':    return 'badge badge--progress';
-    case 'Resolved':       return 'badge badge--resolved';
-    case 'Rejected':       return 'badge badge--rejected';
-    case 'Pending Review': return 'badge badge--review';
-    default:               return 'badge';
-  }
+  const map = {
+    'Open':           'badge badge--open',
+    'In Progress':    'badge badge--progress',
+    'Resolved':       'badge badge--resolved',
+    'Rejected':       'badge badge--rejected',
+    'Pending Review': 'badge badge--review',
+  };
+  return map[status] || 'badge badge--neutral';
 };
 
-const priorityColor = (priority) => {
-  switch (priority) {
-    case 'Critical': return 'var(--priority-critical-text)';
-    case 'High':     return 'var(--priority-high-text)';
-    case 'Low':      return 'var(--priority-low-text)';
-    default:         return 'var(--priority-medium-text)';
-  }
+const priorityDotColor = (priority) => {
+  const map = {
+    Critical: 'var(--priority-critical)',
+    High:     'var(--priority-high)',
+    Medium:   'var(--priority-medium)',
+    Low:      'var(--priority-low)',
+  };
+  return map[priority] || 'var(--priority-low)';
 };
 
 const EmployeeDashboard = () => {
@@ -30,9 +32,9 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const response = await fetch('http://localhost:8000/tickets');
-        if (!response.ok) throw new Error('Failed to fetch tickets');
-        const data = await response.json();
+        const res = await fetch('http://localhost:8000/tickets');
+        if (!res.ok) throw new Error('Failed to fetch tickets');
+        const data = await res.json();
         setTickets(data.filter((t) => t.raised_by === 'employee@tcs.com'));
       } catch {
         setError('Unable to load tickets. Please make sure the backend is running.');
@@ -45,16 +47,14 @@ const EmployeeDashboard = () => {
 
   const formatDate = (iso) => {
     if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   return (
     <div className="page">
-      {/* Topbar */}
       <nav className="topbar">
         <Link to="/" className="topbar__logo">
-          <span className="topbar__logo-dot" />
+          <div className="topbar__logo-mark">TCS</div>
           IT Helpdesk
         </Link>
         <div className="topbar__divider" />
@@ -64,7 +64,6 @@ const EmployeeDashboard = () => {
       </nav>
 
       <div className="main-content">
-        {/* Page header */}
         <div className="page-header">
           <div>
             <h1 className="page-header__title">My Tickets</h1>
@@ -74,18 +73,19 @@ const EmployeeDashboard = () => {
             className="btn btn--primary btn--lg"
             onClick={() => navigate('/employee/new-ticket')}
           >
-            + New Ticket
+            <Plus size={15} strokeWidth={2.5} />
+            New Ticket
           </button>
         </div>
 
-        {/* Loading */}
+        {/* Loading skeletons */}
         {loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {[1,2,3].map(i => (
-              <div key={i} style={{ padding: '1rem 1.1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+          <div className="ticket-list">
+            {[1, 2, 3].map((i) => (
+              <div key={i} style={{ padding: '0.9rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)' }}>
                 <div className="skeleton skeleton-line skeleton-line--short" />
-                <div className="skeleton skeleton-line skeleton-line--medium" style={{ marginTop: '0.5rem' }} />
-                <div className="skeleton skeleton-line skeleton-line--full" style={{ marginTop: '0.5rem' }} />
+                <div className="skeleton skeleton-line skeleton-line--medium" style={{ marginTop: '0.4rem' }} />
+                <div className="skeleton skeleton-line skeleton-line--full" style={{ marginTop: '0.4rem' }} />
               </div>
             ))}
           </div>
@@ -93,16 +93,22 @@ const EmployeeDashboard = () => {
 
         {/* Error */}
         {error && !loading && (
-          <div className="alert alert--error">{error}</div>
+          <div className="alert alert--error">
+            <AlertCircle size={15} />
+            {error}
+          </div>
         )}
 
         {/* Empty */}
         {!loading && !error && tickets.length === 0 && (
           <div className="empty-state">
-            <div className="empty-state__icon">📭</div>
+            <div className="empty-state__icon">
+              <InboxIcon size={18} strokeWidth={1.5} />
+            </div>
             <div className="empty-state__title">No tickets yet</div>
             <div className="empty-state__body">You haven't submitted any support tickets. Create one to get started.</div>
-            <button className="btn btn--primary" style={{ marginTop: '1.1rem' }} onClick={() => navigate('/employee/new-ticket')}>
+            <button className="btn btn--primary" style={{ marginTop: '1rem' }} onClick={() => navigate('/employee/new-ticket')}>
+              <Plus size={14} strokeWidth={2.5} />
               Create First Ticket
             </button>
           </div>
@@ -126,14 +132,14 @@ const EmployeeDashboard = () => {
                   <div className="ticket-row__meta">
                     <span className="ticket-row__meta-item">{ticket.category || 'Uncategorized'}</span>
                     {ticket.sub_category && (
-                      <span className="ticket-row__meta-item" style={{ color: 'var(--text-muted)' }}>
-                        {ticket.sub_category}
-                      </span>
+                      <span className="ticket-row__meta-item" style={{ color: 'var(--text-muted)' }}>{ticket.sub_category}</span>
                     )}
                     <span className="ticket-row__meta-item">
-                      <span style={{ color: priorityColor(ticket.priority), fontWeight: 700, fontSize: '0.75rem' }}>
-                        ● {ticket.priority || 'Medium'}
-                      </span>
+                      <span
+                        className="priority-dot"
+                        style={{ background: priorityDotColor(ticket.priority) }}
+                      />
+                      {ticket.priority || 'Medium'}
                     </span>
                     <span className="ticket-row__meta-item">{ticket.routed_to || 'Unassigned'}</span>
                   </div>
@@ -142,7 +148,7 @@ const EmployeeDashboard = () => {
                   <span className={statusBadgeClass(ticket.status)}>{ticket.status}</span>
                   <span className="ticket-row__date">{formatDate(ticket.created_at)}</span>
                 </div>
-                <span className="ticket-row__chevron">›</span>
+                <ChevronRight size={16} className="ticket-row__chevron" />
               </div>
             ))}
           </div>

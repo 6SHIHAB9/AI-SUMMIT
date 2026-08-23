@@ -1,22 +1,23 @@
 import { useNavigate } from 'react-router-dom'
+import { User, Ticket, ShieldCheck } from 'lucide-react'
 
 const ROLES = [
   {
-    icon: '📋',
+    Icon: User,
     title: 'Employee',
     description: 'Submit and track your support tickets.',
     path: '/employee',
     accent: 'employee',
   },
   {
-    icon: '🎫',
+    Icon: Ticket,
     title: 'Ticket Resolver',
-    description: 'Work assigned tickets to resolution.',
+    description: 'Work assigned tickets through to resolution.',
     path: '/resolver',
     accent: 'resolver',
   },
   {
-    icon: '🛡️',
+    Icon: ShieldCheck,
     title: 'HITL Reviewer',
     description: 'Review flagged tickets requiring human approval.',
     path: '/review',
@@ -29,35 +30,42 @@ export default function Landing() {
 
   return (
     <div className="landing">
-      <div className="landing__inner">
+      {/* Top nav bar */}
+      <header className="landing__topbar">
+        <div className="landing__logo-mark">TCS</div>
+        <span className="landing__logo-text">IT Helpdesk</span>
+        <span className="landing__logo-org">Enterprise Support Platform</span>
+      </header>
 
-        <div className="landing__wordmark">
-          <span className="landing__wordmark-dot" />
-          TCS Enterprise Support
+      {/* Body */}
+      <div className="landing__body">
+        <div className="landing__inner">
+          <div className="landing__heading-block">
+            <div className="landing__org-label">TCS Enterprise Support</div>
+            <h1 className="landing__title">IT Helpdesk</h1>
+            <p className="landing__subtitle">
+              Submit, track, and resolve IT support requests — with intelligent classification and routing.
+            </p>
+          </div>
+
+          <div className="landing__role-label">Select your workspace</div>
+          <div className="landing__role-grid">
+            {ROLES.map(({ Icon, title, description, path, accent }) => (
+              <button
+                key={path}
+                type="button"
+                className="role-card"
+                onClick={() => navigate(path)}
+              >
+                <div className={`role-card__icon-wrap role-card__icon-wrap--${accent}`}>
+                  <Icon size={16} strokeWidth={2} />
+                </div>
+                <span className="role-card__title">{title}</span>
+                <span className="role-card__desc">{description}</span>
+              </button>
+            ))}
+          </div>
         </div>
-
-        <h1 className="landing__title">IT Helpdesk</h1>
-        <p className="landing__subtitle">
-          Submit, track, and resolve IT support requests — powered by intelligent classification and routing.
-        </p>
-
-        <div className="landing__role-grid">
-          {ROLES.map((role) => (
-            <button
-              key={role.path}
-              type="button"
-              className="role-card"
-              onClick={() => navigate(role.path)}
-            >
-              <div className={`role-card__accent role-card__accent--${role.accent}`}>
-                {role.icon}
-              </div>
-              <span className="role-card__title">{role.title}</span>
-              <span className="role-card__desc">{role.description}</span>
-            </button>
-          ))}
-        </div>
-
       </div>
     </div>
   )

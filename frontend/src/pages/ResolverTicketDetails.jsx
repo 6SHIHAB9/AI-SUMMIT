@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { departmentToSlug } from '../utils/departments.js';
+import { AlertCircle, CheckCircle2, XCircle, BookOpen } from 'lucide-react';
 
 const statusBadgeClass = (status) => {
   const map = {
@@ -11,7 +12,7 @@ const statusBadgeClass = (status) => {
     'Rejected':       'badge badge--rejected',
     'Pending Review': 'badge badge--review',
   };
-  return map[status] || 'badge';
+  return map[status] || 'badge badge--neutral';
 };
 
 export default function ResolverTicketDetails() {
@@ -30,9 +31,7 @@ export default function ResolverTicketDetails() {
   const fetchTicket = async () => {
     try {
       const res = await fetch(`http://localhost:8000/resolver/ticket/${ticketId}`);
-      if (!res.ok) {
-        throw new Error(res.status === 404 ? 'Ticket not found' : 'Failed to load ticket details');
-      }
+      if (!res.ok) throw new Error(res.status === 404 ? 'Ticket not found' : 'Failed to load ticket details');
       const data = await res.json();
       setTicket(data);
       setSelectedStatus(data.status || 'Open');
@@ -53,7 +52,6 @@ export default function ResolverTicketDetails() {
     e.preventDefault();
     setValidationError('');
     setActionSuccess('');
-
     if ((selectedStatus === 'Resolved' || selectedStatus === 'Rejected') && !comment.trim()) {
       setValidationError(
         selectedStatus === 'Resolved'
@@ -62,7 +60,6 @@ export default function ResolverTicketDetails() {
       );
       return;
     }
-
     setSubmitting(true);
     try {
       const res = await fetch(`http://localhost:8000/resolver/tickets/${ticketId}/status`, {
@@ -114,13 +111,14 @@ export default function ResolverTicketDetails() {
     return (
       <div className="page">
         <nav className="topbar">
-          <Link to="/" className="topbar__logo"><span className="topbar__logo-dot" />IT Helpdesk</Link>
+          <Link to="/" className="topbar__logo"><div className="topbar__logo-mark">TCS</div>IT Helpdesk</Link>
           <div className="topbar__divider" />
           <span className="topbar__section">Ticket Resolver</span>
         </nav>
         <div className="main-content">
-          <div className="skeleton skeleton-line skeleton-line--short" style={{ height: '1.5rem', marginBottom: '1rem' }} />
-          {[1,2,3].map(i => <div key={i} className="skeleton skeleton-line skeleton-line--full" style={{ marginBottom: '0.6rem' }} />)}
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="skeleton skeleton-line skeleton-line--full" style={{ marginBottom: '0.6rem', height: '1.1rem' }} />
+          ))}
         </div>
       </div>
     );
@@ -130,7 +128,7 @@ export default function ResolverTicketDetails() {
     return (
       <div className="page">
         <nav className="topbar">
-          <Link to="/" className="topbar__logo"><span className="topbar__logo-dot" />IT Helpdesk</Link>
+          <Link to="/" className="topbar__logo"><div className="topbar__logo-mark">TCS</div>IT Helpdesk</Link>
           <div className="topbar__divider" />
           <span className="topbar__section">Ticket Resolver</span>
           <div className="topbar__spacer" />
@@ -138,11 +136,9 @@ export default function ResolverTicketDetails() {
         </nav>
         <div className="main-content">
           <div className="empty-state">
-            <div className="empty-state__icon">⚠️</div>
+            <div className="empty-state__icon"><AlertCircle size={18} strokeWidth={1.5} /></div>
             <div className="empty-state__title">{error || 'Ticket not found'}</div>
-            <button className="btn btn--secondary" style={{ marginTop: '1rem' }} onClick={() => navigate('/resolver')}>
-              ← Resolver Dashboard
-            </button>
+            <button className="btn btn--secondary" style={{ marginTop: '1rem' }} onClick={() => navigate('/resolver')}>← Resolver Dashboard</button>
           </div>
         </div>
       </div>
@@ -151,10 +147,9 @@ export default function ResolverTicketDetails() {
 
   return (
     <div className="page">
-      {/* Topbar */}
       <nav className="topbar">
         <Link to="/" className="topbar__logo">
-          <span className="topbar__logo-dot" />
+          <div className="topbar__logo-mark">TCS</div>
           IT Helpdesk
         </Link>
         <div className="topbar__divider" />
@@ -179,9 +174,7 @@ export default function ResolverTicketDetails() {
               <div className="ticket-detail__badges">
                 <span className={statusBadgeClass(ticket.status)}>{ticket.status}</span>
                 {ticket.urgency && (
-                  <span className="badge" style={{ background: 'var(--bg-raised)', color: 'var(--text-secondary)', borderColor: 'var(--border-subtle)' }}>
-                    {ticket.urgency} urgency
-                  </span>
+                  <span className="badge badge--neutral">{ticket.urgency} urgency</span>
                 )}
               </div>
             </div>
@@ -190,14 +183,14 @@ export default function ResolverTicketDetails() {
           {/* Meta grid */}
           <div className="ticket-detail__meta-grid">
             {[
-              ['Raised By',   ticket.raised_by],
-              ['Routed To',   ticket.routed_to || '—'],
-              ['Category',    ticket.category || '—'],
-              ['Sub-category',ticket.sub_category || '—'],
-              ['Priority',    ticket.priority || '—'],
-              ['Urgency',     ticket.urgency || '—'],
-              ['Sentiment',   ticket.sentiment || '—'],
-              ['AI Confidence', ticket.confidence ? `${Math.round(ticket.confidence * 100)}%` : '—'],
+              ['Raised By',    ticket.raised_by],
+              ['Routed To',    ticket.routed_to || '—'],
+              ['Category',     ticket.category || '—'],
+              ['Sub-category', ticket.sub_category || '—'],
+              ['Priority',     ticket.priority || '—'],
+              ['Urgency',      ticket.urgency || '—'],
+              ['Sentiment',    ticket.sentiment || '—'],
+              ['Confidence',   ticket.confidence ? `${Math.round(ticket.confidence * 100)}%` : '—'],
             ].map(([label, val]) => (
               <div className="meta-cell" key={label}>
                 <div className="meta-cell__label">{label}</div>
@@ -216,11 +209,11 @@ export default function ResolverTicketDetails() {
           {ticket.attachment && (
             <div className="content-section">
               <div className="content-section__title">Attachment</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{ticket.attachment}</div>
+              <div style={{ fontSize: '0.83rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{ticket.attachment}</div>
             </div>
           )}
 
-          {/* AI Suggested Resolution */}
+          {/* Suggested Resolution */}
           {ticket.suggested_resolution ? (
             <div className="resolution-section">
               <div className="resolution-section__title">Suggested Resolution</div>
@@ -229,9 +222,12 @@ export default function ResolverTicketDetails() {
               </div>
               {kbSources && kbSources.length > 0 && (
                 <div className="resolution-section__sources">
-                  <div className="resolution-section__sources-label">Knowledge Base Sources</div>
+                  <div className="resolution-section__sources-label">References</div>
                   {kbSources.map((s, i) => (
-                    <span key={i} className="resolution-section__source-item">{s.source}</span>
+                    <span key={i} className="resolution-section__source-item">
+                      <BookOpen size={10} />
+                      {s.source}
+                    </span>
                   ))}
                 </div>
               )}
@@ -239,37 +235,39 @@ export default function ResolverTicketDetails() {
           ) : (
             <div className="content-section">
               <div className="content-section__title">Suggested Resolution</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                 {ticket.kb_message || 'No automated resolution found in the Knowledge Base.'}
               </div>
             </div>
           )}
 
-          {/* Previous resolver notes (In Progress) */}
+          {/* In-progress notes */}
           {ticket.resolver_comment && ticket.status === 'In Progress' && (
             <div className="alert alert--info">
               <div>
-                <div style={{ fontWeight: 700, marginBottom: '0.2rem', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Resolver Notes</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.15rem', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Resolver Notes</div>
                 <div style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>{ticket.resolver_comment}</div>
               </div>
             </div>
           )}
 
-          {/* Resolved / Rejected terminal state */}
+          {/* Terminal state alerts */}
           {ticket.status === 'Resolved' && (
             <div className="alert alert--success">
+              <CheckCircle2 size={14} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
               <div>
-                <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>✓ Resolved</div>
-                <div style={{ fontSize: '0.83rem', whiteSpace: 'pre-wrap' }}>{ticket.resolver_comment || 'Ticket has been resolved.'}</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.15rem' }}>Resolved</div>
+                <div style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>{ticket.resolver_comment || 'Ticket has been resolved.'}</div>
               </div>
             </div>
           )}
 
           {ticket.status === 'Rejected' && (
             <div className="alert alert--error">
+              <XCircle size={14} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
               <div>
-                <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>✕ Rejected</div>
-                <div style={{ fontSize: '0.83rem', whiteSpace: 'pre-wrap' }}>{ticket.resolver_comment || 'Ticket has been rejected.'}</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.15rem' }}>Rejected</div>
+                <div style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>{ticket.resolver_comment || 'Ticket has been rejected.'}</div>
               </div>
             </div>
           )}
@@ -281,11 +279,11 @@ export default function ResolverTicketDetails() {
 
               {actionSuccess && (
                 <div className="alert alert--success" style={{ marginBottom: '1rem' }}>
-                  <span>✓ {actionSuccess}</span>
+                  <CheckCircle2 size={14} />
+                  <span style={{ flex: 1 }}>{actionSuccess}</span>
                   <button
                     type="button"
-                    className="btn btn--ghost"
-                    style={{ marginLeft: 'auto', fontSize: '0.8rem' }}
+                    className="btn btn--ghost btn--sm"
                     onClick={() => navigate(deptSlug ? `/resolver/${deptSlug}` : '/resolver')}
                   >
                     Back to Queue
@@ -295,7 +293,8 @@ export default function ResolverTicketDetails() {
 
               {validationError && (
                 <div className="alert alert--error" style={{ marginBottom: '1rem' }}>
-                  ⚠ {validationError}
+                  <AlertCircle size={14} />
+                  {validationError}
                 </div>
               )}
 
@@ -326,33 +325,18 @@ export default function ResolverTicketDetails() {
                     className="form-textarea"
                     rows="4"
                     placeholder={
-                      selectedStatus === 'Resolved'
-                        ? 'Describe how the issue was resolved…'
-                        : selectedStatus === 'Rejected'
-                        ? 'Explain why this ticket cannot be processed…'
-                        : 'Add investigation notes or status updates…'
+                      selectedStatus === 'Resolved' ? 'Describe how the issue was resolved…'
+                      : selectedStatus === 'Rejected' ? 'Explain why this ticket cannot be processed…'
+                      : 'Add investigation notes or status updates…'
                     }
                     value={comment}
                     onChange={(e) => { setComment(e.target.value); setValidationError(''); }}
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    onClick={() => navigate(deptSlug ? `/resolver/${deptSlug}` : '/resolver')}
-                    disabled={submitting}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className={actionBtnClass()}
-                    disabled={submitting}
-                  >
-                    {actionBtnLabel()}
-                  </button>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn--ghost" onClick={() => navigate(deptSlug ? `/resolver/${deptSlug}` : '/resolver')} disabled={submitting}>Cancel</button>
+                  <button type="submit" className={actionBtnClass()} disabled={submitting}>{actionBtnLabel()}</button>
                 </div>
               </form>
             </div>

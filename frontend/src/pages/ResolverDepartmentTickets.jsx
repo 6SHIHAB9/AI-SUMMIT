@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { slugToDepartment, DEPARTMENT_ICONS } from '../utils/departments.js';
+import { slugToDepartment } from '../utils/departments.js';
+import { AlertCircle, CheckCircle2, ChevronRight, InboxIcon } from 'lucide-react';
 
 const statusBadgeClass = (status) => {
   const map = {
@@ -10,21 +11,18 @@ const statusBadgeClass = (status) => {
     'Rejected':       'badge badge--rejected',
     'Pending Review': 'badge badge--review',
   };
-  return map[status] || 'badge';
+  return map[status] || 'badge badge--neutral';
 };
 
-const priorityColor = (p) => {
-  if (p === 'Critical') return 'var(--priority-critical-text)';
-  if (p === 'High')     return 'var(--priority-high-text)';
-  if (p === 'Low')      return 'var(--priority-low-text)';
-  return 'var(--priority-medium-text)';
+const priorityDotColor = (p) => {
+  const map = { Critical: 'var(--priority-critical)', High: 'var(--priority-high)', Medium: 'var(--priority-medium)', Low: 'var(--priority-low)' };
+  return map[p] || 'var(--priority-low)';
 };
 
 export default function ResolverDepartmentTickets() {
   const { departmentSlug } = useParams();
   const navigate = useNavigate();
   const departmentName = slugToDepartment(departmentSlug);
-  const icon = DEPARTMENT_ICONS[departmentName] || '📁';
 
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,58 +54,49 @@ export default function ResolverDepartmentTickets() {
     <div className="page">
       <nav className="topbar">
         <Link to="/" className="topbar__logo">
-          <span className="topbar__logo-dot" />
+          <div className="topbar__logo-mark">TCS</div>
           IT Helpdesk
         </Link>
         <div className="topbar__divider" />
         <span className="topbar__section">Ticket Resolver</span>
         <div className="topbar__spacer" />
         {!loading && !error && (
-          <span className="stat-chip" style={{ marginRight: '0.4rem' }}>
-            {tickets.length} active
-          </span>
+          <span className="stat-chip" style={{ marginRight: '0.4rem' }}>{tickets.length} active</span>
         )}
-        <button className="topbar__nav-back" onClick={() => navigate('/resolver')}>
-          ← Departments
-        </button>
+        <button className="topbar__nav-back" onClick={() => navigate('/resolver')}>← Departments</button>
       </nav>
 
       <div className="main-content main-content--wide">
         <div className="page-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <span style={{ fontSize: '1.3rem' }}>{icon}</span>
-            <div>
-              <h1 className="page-header__title">{departmentName}</h1>
-              <p className="page-header__subtitle">Open and in-progress tickets awaiting resolution</p>
-            </div>
+          <div>
+            <h1 className="page-header__title">{departmentName}</h1>
+            <p className="page-header__subtitle">Open and in-progress tickets awaiting resolution</p>
           </div>
         </div>
 
-        {/* Loading skeletons */}
+        {/* Loading */}
         {loading && (
           <div className="ticket-list">
-            {[1,2,3].map(i => (
-              <div key={i} style={{ padding: '1rem 1.1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+            {[1, 2, 3].map((i) => (
+              <div key={i} style={{ padding: '0.9rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)' }}>
                 <div className="skeleton skeleton-line skeleton-line--short" />
-                <div className="skeleton skeleton-line skeleton-line--medium" style={{ marginTop: '0.5rem' }} />
-                <div className="skeleton skeleton-line skeleton-line--full" style={{ marginTop: '0.5rem' }} />
+                <div className="skeleton skeleton-line skeleton-line--medium" style={{ marginTop: '0.4rem' }} />
+                <div className="skeleton skeleton-line skeleton-line--full" style={{ marginTop: '0.4rem' }} />
               </div>
             ))}
           </div>
         )}
 
         {error && !loading && (
-          <div className="alert alert--error">{error}</div>
+          <div className="alert alert--error"><AlertCircle size={14} />{error}</div>
         )}
 
         {!loading && !error && tickets.length === 0 && (
           <div className="empty-state">
-            <div className="empty-state__icon">✅</div>
+            <div className="empty-state__icon"><CheckCircle2 size={18} strokeWidth={1.5} /></div>
             <div className="empty-state__title">Queue cleared</div>
             <div className="empty-state__body">All tickets for {departmentName} have been resolved or rejected.</div>
-            <button className="btn btn--secondary" style={{ marginTop: '1rem' }} onClick={() => navigate('/resolver')}>
-              ← Back to Departments
-            </button>
+            <button className="btn btn--secondary" style={{ marginTop: '1rem' }} onClick={() => navigate('/resolver')}>← Back to Departments</button>
           </div>
         )}
 
@@ -132,14 +121,11 @@ export default function ResolverDepartmentTickets() {
                       <span className="ticket-row__meta-item" style={{ color: 'var(--text-muted)' }}>{ticket.sub_category}</span>
                     )}
                     <span className="ticket-row__meta-item">
-                      <span style={{ color: priorityColor(ticket.priority), fontWeight: 700, fontSize: '0.75rem' }}>
-                        ● {ticket.priority || 'Medium'}
-                      </span>
+                      <span className="priority-dot" style={{ background: priorityDotColor(ticket.priority) }} />
+                      {ticket.priority || 'Medium'}
                     </span>
                     {ticket.resolver_comment && (
-                      <span className="ticket-row__meta-item" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        Has notes
-                      </span>
+                      <span className="ticket-row__meta-item" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Has notes</span>
                     )}
                   </div>
                 </div>
@@ -147,7 +133,7 @@ export default function ResolverDepartmentTickets() {
                   <span className={statusBadgeClass(ticket.status)}>{ticket.status}</span>
                   <span className="ticket-row__date">{formatDate(ticket.created_at)}</span>
                 </div>
-                <span className="ticket-row__chevron">›</span>
+                <ChevronRight size={16} className="ticket-row__chevron" />
               </div>
             ))}
           </div>

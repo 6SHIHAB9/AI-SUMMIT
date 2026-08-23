@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { DEPARTMENTS } from '../utils/departments.js';
 import { PRIORITIES, URGENCIES, SENTIMENTS } from '../utils/priorities.js';
+import { AlertCircle, CheckCircle2, X, InboxIcon } from 'lucide-react';
 
 const ReviewerDashboard = () => {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ const ReviewerDashboard = () => {
     setModalError('');
     if (type === 'reject') {
       setFormData({ reason: '' });
-    } else if (type === 'approve') {
+    } else {
       setFormData({
         routed_to: '',
         category: ticket.category && ticket.category !== 'General' ? ticket.category : '',
@@ -62,9 +63,8 @@ const ReviewerDashboard = () => {
       return;
     }
     setIsProcessing(true);
-    const { ticket_id } = selectedTicket;
     try {
-      const res = await fetch(`http://localhost:8000/tickets/${ticket_id}/${activeModal}`, {
+      const res = await fetch(`http://localhost:8000/tickets/${selectedTicket.ticket_id}/${activeModal}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData }),
@@ -88,16 +88,14 @@ const ReviewerDashboard = () => {
     <div className="page">
       <nav className="topbar">
         <Link to="/" className="topbar__logo">
-          <span className="topbar__logo-dot" style={{ background: 'var(--accent-reviewer)' }} />
+          <div className="topbar__logo-mark">TCS</div>
           IT Helpdesk
         </Link>
         <div className="topbar__divider" />
         <span className="topbar__section">Human Review</span>
         <div className="topbar__spacer" />
         {!loading && tickets.length > 0 && (
-          <span className="stat-chip stat-chip--active" style={{ marginRight: '0.4rem' }}>
-            {tickets.length} pending
-          </span>
+          <span className="stat-chip stat-chip--active" style={{ marginRight: '0.5rem' }}>{tickets.length} pending</span>
         )}
         <Link to="/" className="topbar__nav-back">← Home</Link>
       </nav>
@@ -106,14 +104,15 @@ const ReviewerDashboard = () => {
         <div className="page-header">
           <div>
             <h1 className="page-header__title">Pending Review Queue</h1>
-            <p className="page-header__subtitle">Tickets flagged for human oversight — review and approve or reject.</p>
+            <p className="page-header__subtitle">Tickets flagged for human oversight — review and route or reject.</p>
           </div>
         </div>
 
+        {/* Loading */}
         {loading && (
           <div className="ticket-list">
-            {[1,2].map(i => (
-              <div key={i} style={{ padding: '1.1rem 1.25rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+            {[1, 2].map((i) => (
+              <div key={i} style={{ padding: '1rem 1.1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)', borderLeft: '3px solid #fed7aa' }}>
                 <div className="skeleton skeleton-line skeleton-line--short" />
                 <div className="skeleton skeleton-line skeleton-line--full" style={{ marginTop: '0.5rem' }} />
                 <div className="skeleton skeleton-line skeleton-line--medium" style={{ marginTop: '0.5rem' }} />
@@ -123,12 +122,12 @@ const ReviewerDashboard = () => {
         )}
 
         {error && !loading && (
-          <div className="alert alert--error">{error}</div>
+          <div className="alert alert--error"><AlertCircle size={14} />{error}</div>
         )}
 
         {!loading && !error && tickets.length === 0 && (
           <div className="empty-state">
-            <div className="empty-state__icon">✅</div>
+            <div className="empty-state__icon"><CheckCircle2 size={18} strokeWidth={1.5} /></div>
             <div className="empty-state__title">All clear</div>
             <div className="empty-state__body">No tickets are currently pending human review.</div>
           </div>
@@ -138,14 +137,14 @@ const ReviewerDashboard = () => {
           <div className="ticket-list">
             {tickets.map((ticket) => (
               <div key={ticket.ticket_id} className="review-card">
-                {/* Card header */}
+                {/* Header */}
                 <div className="review-card__header">
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>
                       {ticket.ticket_id} · {formatDate(ticket.created_at)}
                     </div>
-                    <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{ticket.subject}</div>
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>{ticket.raised_by}</div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>{ticket.subject}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>{ticket.raised_by}</div>
                   </div>
                   <span className="badge badge--review">Pending Review</span>
                 </div>
@@ -170,14 +169,14 @@ const ReviewerDashboard = () => {
                   ))}
                 </div>
 
-                {/* Reason for review */}
+                {/* Reason */}
                 <div className="review-card__reason">
                   <strong>Reason for Review:</strong> {ticket.approval_reason}
                 </div>
 
                 {/* Attachment */}
                 {ticket.attachment && (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
                     <strong>Attachment:</strong> {ticket.attachment}
                   </div>
                 )}
@@ -185,10 +184,12 @@ const ReviewerDashboard = () => {
                 {/* Actions */}
                 <div className="review-card__actions">
                   <button className="btn btn--success" onClick={() => openModal('approve', ticket)}>
-                    ✓ Approve &amp; Route
+                    <CheckCircle2 size={14} />
+                    Approve &amp; Route
                   </button>
                   <button className="btn btn--danger" onClick={() => openModal('reject', ticket)}>
-                    ✕ Reject
+                    <X size={14} />
+                    Reject
                   </button>
                 </div>
               </div>
@@ -204,15 +205,20 @@ const ReviewerDashboard = () => {
             <div className="modal__header">
               <h2 className="modal__title">
                 {activeModal === 'reject' ? 'Reject Ticket' : 'Approve & Route Ticket'}
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8em', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78em', color: 'var(--text-muted)', marginLeft: '0.45rem' }}>
                   {selectedTicket?.ticket_id}
                 </span>
               </h2>
-              <button className="modal__close" onClick={closeModal} aria-label="Close">&times;</button>
+              <button className="modal__close" onClick={closeModal} aria-label="Close">
+                <X size={16} />
+              </button>
             </div>
 
             {modalError && (
-              <div className="alert alert--error" style={{ marginBottom: '1rem' }}>⚠ {modalError}</div>
+              <div className="alert alert--error" style={{ marginBottom: '0.9rem' }}>
+                <AlertCircle size={14} />
+                {modalError}
+              </div>
             )}
 
             <form onSubmit={handleAction}>
@@ -234,7 +240,7 @@ const ReviewerDashboard = () => {
               )}
 
               {activeModal === 'approve' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label" htmlFor="route-to">
                       Route to department <span className="required">*</span>
@@ -255,63 +261,31 @@ const ReviewerDashboard = () => {
                       }}
                     >
                       <option value="" disabled>— Select department —</option>
-                      {DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept}>{dept}</option>
-                      ))}
+                      {DEPARTMENTS.map((dept) => <option key={dept} value={dept}>{dept}</option>)}
                     </select>
                   </div>
 
                   <div className="form-row">
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" htmlFor="approve-category">
-                        Category <span className="required">*</span>
-                      </label>
-                      <input
-                        id="approve-category"
-                        type="text"
-                        required
-                        className="form-input"
-                        value={formData.category || ''}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        placeholder="e.g. IT Support"
-                      />
+                      <label className="form-label" htmlFor="approve-category">Category <span className="required">*</span></label>
+                      <input id="approve-category" type="text" required className="form-input" value={formData.category || ''} onChange={(e) => setFormData({ ...formData, category: e.target.value })} placeholder="e.g. IT Support" />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" htmlFor="approve-subcategory">
-                        Sub-category <span className="required">*</span>
-                      </label>
-                      <input
-                        id="approve-subcategory"
-                        type="text"
-                        required
-                        className="form-input"
-                        value={formData.sub_category || ''}
-                        onChange={(e) => setFormData({ ...formData, sub_category: e.target.value })}
-                        placeholder="e.g. Password Reset"
-                      />
+                      <label className="form-label" htmlFor="approve-subcategory">Sub-category <span className="required">*</span></label>
+                      <input id="approve-subcategory" type="text" required className="form-input" value={formData.sub_category || ''} onChange={(e) => setFormData({ ...formData, sub_category: e.target.value })} placeholder="e.g. Password Reset" />
                     </div>
                   </div>
 
                   <div className="form-row">
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label" htmlFor="approve-priority">Priority</label>
-                      <select
-                        id="approve-priority"
-                        className="form-select"
-                        value={formData.priority || 'Medium'}
-                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                      >
+                      <select id="approve-priority" className="form-select" value={formData.priority || 'Medium'} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
                         {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
                       </select>
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label" htmlFor="approve-urgency">Urgency</label>
-                      <select
-                        id="approve-urgency"
-                        className="form-select"
-                        value={formData.urgency || 'Medium'}
-                        onChange={(e) => setFormData({ ...formData, urgency: e.target.value })}
-                      >
+                      <select id="approve-urgency" className="form-select" value={formData.urgency || 'Medium'} onChange={(e) => setFormData({ ...formData, urgency: e.target.value })}>
                         {URGENCIES.map((u) => <option key={u} value={u}>{u}</option>)}
                       </select>
                     </div>
@@ -319,12 +293,7 @@ const ReviewerDashboard = () => {
 
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label" htmlFor="approve-sentiment">Sentiment</label>
-                    <select
-                      id="approve-sentiment"
-                      className="form-select"
-                      value={formData.sentiment || 'Neutral'}
-                      onChange={(e) => setFormData({ ...formData, sentiment: e.target.value })}
-                    >
+                    <select id="approve-sentiment" className="form-select" value={formData.sentiment || 'Neutral'} onChange={(e) => setFormData({ ...formData, sentiment: e.target.value })}>
                       {SENTIMENTS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
@@ -332,19 +301,13 @@ const ReviewerDashboard = () => {
               )}
 
               <div className="modal__actions">
-                <button type="button" className="btn btn--ghost" onClick={closeModal} disabled={isProcessing}>
-                  Cancel
-                </button>
+                <button type="button" className="btn btn--ghost" onClick={closeModal} disabled={isProcessing}>Cancel</button>
                 <button
                   type="submit"
-                  className={activeModal === 'reject' ? 'btn btn--danger btn--lg' : 'btn btn--success btn--lg'}
+                  className={activeModal === 'reject' ? 'btn btn--danger btn--lg' : 'btn btn--primary btn--lg'}
                   disabled={isProcessing}
                 >
-                  {isProcessing
-                    ? 'Processing…'
-                    : activeModal === 'reject'
-                    ? 'Confirm Rejection'
-                    : 'Confirm & Route'}
+                  {isProcessing ? 'Processing…' : activeModal === 'reject' ? 'Confirm Rejection' : 'Confirm & Route'}
                 </button>
               </div>
             </form>
