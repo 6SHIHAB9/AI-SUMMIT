@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import './Resolver.css';
-import './Employee.css';
 import { departmentToSlug } from '../utils/departments.js';
+
+const statusBadgeClass = (status) => {
+  const map = {
+    'Open':           'badge badge--open',
+    'In Progress':    'badge badge--progress',
+    'Resolved':       'badge badge--resolved',
+    'Rejected':       'badge badge--rejected',
+    'Pending Review': 'badge badge--review',
+  };
+  return map[status] || 'badge';
+};
 
 export default function ResolverTicketDetails() {
   const { ticketId } = useParams();
@@ -12,8 +21,6 @@ export default function ResolverTicketDetails() {
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // Status update state
   const [selectedStatus, setSelectedStatus] = useState('');
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -22,19 +29,14 @@ export default function ResolverTicketDetails() {
 
   const fetchTicket = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/resolver/ticket/${ticketId}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Ticket not found');
-        }
-        throw new Error('Failed to load ticket details');
+      const res = await fetch(`http://localhost:8000/resolver/ticket/${ticketId}`);
+      if (!res.ok) {
+        throw new Error(res.status === 404 ? 'Ticket not found' : 'Failed to load ticket details');
       }
-      const data = await response.json();
+      const data = await res.json();
       setTicket(data);
       setSelectedStatus(data.status || 'Open');
-      if (data.resolver_comment) {
-        setComment(data.resolver_comment);
-      }
+      if (data.resolver_comment) setComment(data.resolver_comment);
     } catch (err) {
       setError(err.message || 'Unable to connect to the server');
     } finally {
@@ -43,48 +45,38 @@ export default function ResolverTicketDetails() {
   };
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     fetchTicket();
   }, [ticketId]);
-
-  const formatDate = (isoString) => {
-    if (!isoString) return '';
-    return isoString.split('T')[0];
-  };
 
   const handleStatusSubmit = async (e) => {
     e.preventDefault();
     setValidationError('');
     setActionSuccess('');
 
-    // Validation for Resolved and Rejected
     if ((selectedStatus === 'Resolved' || selectedStatus === 'Rejected') && !comment.trim()) {
       setValidationError(
         selectedStatus === 'Resolved'
-          ? 'A resolution comment is mandatory when resolving a ticket.'
-          : 'A rejection reason is mandatory when rejecting a ticket.'
+          ? 'A resolution comment is required when resolving a ticket.'
+          : 'A rejection reason is required when rejecting a ticket.'
       );
       return;
     }
 
     setSubmitting(true);
     try {
-      const response = await fetch(`http://localhost:8000/resolver/tickets/${ticketId}/status`, {
+      const res = await fetch(`http://localhost:8000/resolver/tickets/${ticketId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: selectedStatus,
-          comment: comment.trim() || null,
-        }),
+        body: JSON.stringify({ status: selectedStatus, comment: comment.trim() || null }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to update ticket status');
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to update ticket status');
       }
-
-      const updatedTicket = await response.json();
-      setTicket(updatedTicket);
-      setActionSuccess(`Ticket successfully updated to "${selectedStatus}"!`);
+      const updated = await res.json();
+      setTicket(updated);
+      setActionSuccess(`Ticket updated to "${selectedStatus}".`);
     } catch (err) {
       setValidationError(err.message || 'Failed to update ticket.');
     } finally {
@@ -92,321 +84,280 @@ export default function ResolverTicketDetails() {
     }
   };
 
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'In Progress':
-        return 'status-in-progress';
-      case 'Open':
-        return 'status-open';
-      case 'Resolved':
-        return 'status-resolved';
-      case 'Rejected':
-        return 'priority-critical';
-      default:
-        return 'status-open';
-    }
+  const isTerminal = ticket && (ticket.status === 'Resolved' || ticket.status === 'Rejected');
+  const deptSlug = ticket ? departmentToSlug(ticket.routed_to) : null;
+
+  const kbSources = (() => {
+    try { return ticket?.kb_sources ? JSON.parse(ticket.kb_sources) : null; } catch { return null; }
+  })();
+
+  const actionBtnClass = () => {
+    if (selectedStatus === 'Resolved') return 'btn btn--success btn--lg';
+    if (selectedStatus === 'Rejected') return 'btn btn--danger btn--lg';
+    return 'btn btn--primary btn--lg';
   };
 
-  const getButtonText = () => {
-    if (submitting) return 'Saving...';
-    if (selectedStatus === 'Resolved') return '✓ Resolve Ticket';
-    if (selectedStatus === 'Rejected') return '✕ Reject Ticket';
-    if (selectedStatus === 'In Progress') return 'Update to In Progress';
+  const actionBtnLabel = () => {
+    if (submitting) return 'Saving…';
+    if (selectedStatus === 'Resolved') return 'Mark as Resolved';
+    if (selectedStatus === 'Rejected') return 'Reject Ticket';
+    if (selectedStatus === 'In Progress') return 'Mark In Progress';
     return 'Update Status';
   };
 
-  const getButtonColor = () => {
-    if (selectedStatus === 'Resolved') return '#059669';
-    if (selectedStatus === 'Rejected') return '#dc2626';
-    if (selectedStatus === 'In Progress') return '#2563eb';
-    return '#2563eb';
+  const formatDate = (iso) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   if (loading) {
     return (
-      <div className="resolver-layout centered-message">
-        <p>Loading ticket details...</p>
+      <div className="page">
+        <nav className="topbar">
+          <Link to="/" className="topbar__logo"><span className="topbar__logo-dot" />IT Helpdesk</Link>
+          <div className="topbar__divider" />
+          <span className="topbar__section">Ticket Resolver</span>
+        </nav>
+        <div className="main-content">
+          <div className="skeleton skeleton-line skeleton-line--short" style={{ height: '1.5rem', marginBottom: '1rem' }} />
+          {[1,2,3].map(i => <div key={i} className="skeleton skeleton-line skeleton-line--full" style={{ marginBottom: '0.6rem' }} />)}
+        </div>
       </div>
     );
   }
 
   if (error || !ticket) {
     return (
-      <div className="resolver-layout centered-message">
-        <h2>{error || 'Ticket Not Found'}</h2>
-        <button
-          className="btn-primary"
-          style={{ marginTop: '1.5rem' }}
-          onClick={() => navigate('/resolver')}
-        >
-          Return to Resolver Dashboard
-        </button>
+      <div className="page">
+        <nav className="topbar">
+          <Link to="/" className="topbar__logo"><span className="topbar__logo-dot" />IT Helpdesk</Link>
+          <div className="topbar__divider" />
+          <span className="topbar__section">Ticket Resolver</span>
+          <div className="topbar__spacer" />
+          <button className="topbar__nav-back" onClick={() => navigate('/resolver')}>← Departments</button>
+        </nav>
+        <div className="main-content">
+          <div className="empty-state">
+            <div className="empty-state__icon">⚠️</div>
+            <div className="empty-state__title">{error || 'Ticket not found'}</div>
+            <button className="btn btn--secondary" style={{ marginTop: '1rem' }} onClick={() => navigate('/resolver')}>
+              ← Resolver Dashboard
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const deptSlug = departmentToSlug(ticket.routed_to);
-
   return (
-    <div className="resolver-layout">
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+    <div className="page">
+      {/* Topbar */}
+      <nav className="topbar">
+        <Link to="/" className="topbar__logo">
+          <span className="topbar__logo-dot" />
+          IT Helpdesk
+        </Link>
+        <div className="topbar__divider" />
+        <span className="topbar__section">Ticket Resolver</span>
+        <div className="topbar__spacer" />
         <button
-          className="btn-back"
-          onClick={() => (deptSlug ? navigate(`/resolver/${deptSlug}`) : navigate('/resolver'))}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#2dd6be',
-            cursor: 'pointer',
-            fontSize: '1rem',
-            padding: 0,
-            fontWeight: 600,
-          }}
+          className="topbar__nav-back"
+          onClick={() => deptSlug ? navigate(`/resolver/${deptSlug}`) : navigate('/resolver')}
         >
-          ← Back to {ticket.routed_to || 'Department'} Queue
+          ← {ticket.routed_to || 'Departments'}
         </button>
-      </div>
+      </nav>
 
-      <div className="resolver-detail-container">
-        {/* Ticket Header */}
-        <header className="ticket-detail-header" style={{ marginBottom: '1.5rem' }}>
-          <div className="title-group">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-              <span className="resolver-ticket-id">{ticket.ticket_id}</span>
-              <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                Created: {formatDate(ticket.created_at)}
-              </span>
-            </div>
-            <h1 style={{ margin: 0, fontSize: '1.75rem', color: '#ffffff' }}>{ticket.subject}</h1>
-          </div>
-          <div className="ticket-badges">
-            <span className={`badge ${getStatusBadgeClass(ticket.status)}`} style={{ fontSize: '0.85rem', padding: '0.4rem 0.9rem' }}>
-              {ticket.status.toUpperCase()}
-            </span>
-          </div>
-        </header>
+      <div className="main-content">
+        <div className="ticket-detail">
 
-        {/* Metadata Grid */}
-        <div className="resolver-detail-meta-grid">
-          <div className="resolver-meta-item">
-            <span className="resolver-meta-label">Raised By</span>
-            <span className="resolver-meta-value">{ticket.raised_by}</span>
-          </div>
-          <div className="resolver-meta-item">
-            <span className="resolver-meta-label">Routed Department</span>
-            <span className="resolver-meta-value" style={{ color: '#2dd6be', fontWeight: 600 }}>
-              {ticket.routed_to || 'Unassigned'}
-            </span>
-          </div>
-          <div className="resolver-meta-item">
-            <span className="resolver-meta-label">Category</span>
-            <span className="resolver-meta-value">{ticket.category || 'N/A'}</span>
-          </div>
-          <div className="resolver-meta-item">
-            <span className="resolver-meta-label">Sub-category</span>
-            <span className="resolver-meta-value">{ticket.sub_category || 'N/A'}</span>
-          </div>
-          <div className="resolver-meta-item">
-            <span className="resolver-meta-label">Priority</span>
-            <span className="resolver-meta-value">{ticket.priority || 'N/A'}</span>
-          </div>
-          <div className="resolver-meta-item">
-            <span className="resolver-meta-label">Urgency</span>
-            <span className="resolver-meta-value">{ticket.urgency || 'N/A'}</span>
-          </div>
-          <div className="resolver-meta-item">
-            <span className="resolver-meta-label">Sentiment</span>
-            <span className="resolver-meta-value">{ticket.sentiment || 'N/A'}</span>
-          </div>
-          <div className="resolver-meta-item">
-            <span className="resolver-meta-label">AI Confidence</span>
-            <span className="resolver-meta-value">
-              {ticket.confidence ? `${Math.round(ticket.confidence * 100)}%` : 'N/A'}
-            </span>
-          </div>
-        </div>
-
-        {/* Ticket Description */}
-        <h3 className="resolver-section-title">Ticket Description</h3>
-        <div className="resolver-description-box">
-          {ticket.description}
-        </div>
-
-        {/* Attachment if present */}
-        {ticket.attachment && (
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h4 style={{ color: '#94a3b8', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Attachment</h4>
-            <p style={{ color: '#f1f5f9', margin: 0 }}>{ticket.attachment}</p>
-          </div>
-        )}
-
-        {/* AI Suggested Resolution */}
-        {ticket.suggested_resolution ? (
-          <div className="resolver-ai-box" style={{ margin: '1.5rem 0' }}>
-            <h4>🤖 AI Suggested Troubleshooting Resolution</h4>
-            <div style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }} className="markdown-body">
-              <ReactMarkdown>{ticket.suggested_resolution}</ReactMarkdown>
-            </div>
-            {ticket.kb_sources && (
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(45, 214, 190, 0.3)' }}>
-                <h5 style={{ color: '#2dd6be', margin: '0 0 0.25rem 0', fontSize: '0.85rem' }}>Knowledge Base Source:</h5>
-                <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#cbd5e1', fontSize: '0.85rem' }}>
-                  {(() => {
-                    try {
-                      const sources = JSON.parse(ticket.kb_sources);
-                      return sources.map((s, idx) => (
-                        <li key={idx}>{s.source}</li>
-                      ));
-                    } catch (e) {
-                      return <li>{ticket.kb_sources}</li>;
-                    }
-                  })()}
-                </ul>
+          {/* Header */}
+          <div className="ticket-detail__header">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span className="ticket-detail__id">{ticket.ticket_id} · {formatDate(ticket.created_at)}</span>
+              <h1 className="ticket-detail__title">{ticket.subject}</h1>
+              <div className="ticket-detail__badges">
+                <span className={statusBadgeClass(ticket.status)}>{ticket.status}</span>
+                {ticket.urgency && (
+                  <span className="badge" style={{ background: 'var(--bg-raised)', color: 'var(--text-secondary)', borderColor: 'var(--border-subtle)' }}>
+                    {ticket.urgency} urgency
+                  </span>
+                )}
               </div>
-            )}
+            </div>
           </div>
-        ) : (
-          <div className="resolver-ai-box" style={{ margin: '1.5rem 0', background: 'rgba(100, 116, 139, 0.15)', borderColor: 'rgba(100, 116, 139, 0.3)' }}>
-            <h4 style={{ color: '#94a3b8' }}>🤖 AI Resolution Unavailable</h4>
-            <p>{ticket.kb_message || 'No relevant resolution was found in the Knowledge Base.'}</p>
+
+          {/* Meta grid */}
+          <div className="ticket-detail__meta-grid">
+            {[
+              ['Raised By',   ticket.raised_by],
+              ['Routed To',   ticket.routed_to || '—'],
+              ['Category',    ticket.category || '—'],
+              ['Sub-category',ticket.sub_category || '—'],
+              ['Priority',    ticket.priority || '—'],
+              ['Urgency',     ticket.urgency || '—'],
+              ['Sentiment',   ticket.sentiment || '—'],
+              ['AI Confidence', ticket.confidence ? `${Math.round(ticket.confidence * 100)}%` : '—'],
+            ].map(([label, val]) => (
+              <div className="meta-cell" key={label}>
+                <div className="meta-cell__label">{label}</div>
+                <div className="meta-cell__value">{val}</div>
+              </div>
+            ))}
           </div>
-        )}
 
-        {/* Previous Resolver Comment History */}
-        {ticket.resolver_comment && ticket.status !== 'Rejected' && ticket.status !== 'Resolved' && (
-          <div style={{
-            background: 'rgba(45, 214, 190, 0.08)',
-            border: '1px solid rgba(45, 214, 190, 0.25)',
-            borderRadius: '8px',
-            padding: '1.25rem',
-            marginBottom: '1.5rem'
-          }}>
-            <h4 style={{ color: '#2dd6be', margin: '0 0 0.5rem 0', fontSize: '0.95rem' }}>Current Resolver Notes</h4>
-            <p style={{ margin: 0, color: '#f1f5f9', whiteSpace: 'pre-wrap' }}>{ticket.resolver_comment}</p>
+          {/* Description */}
+          <div className="content-section">
+            <div className="content-section__title">Description</div>
+            <div className="content-section__body">{ticket.description}</div>
           </div>
-        )}
 
-        {/* Resolver Status Actions Panel */}
-        <div className="resolver-action-card">
-          <h3 className="resolver-action-title">
-            ⚙️ Update Ticket Status
-          </h3>
-
-          {actionSuccess && (
-            <div style={{
-              background: 'rgba(34, 197, 94, 0.15)',
-              color: '#86efac',
-              padding: '1rem',
-              borderRadius: '6px',
-              border: '1px solid rgba(34, 197, 94, 0.3)',
-              marginBottom: '1.5rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span>✓ {actionSuccess}</span>
-              <button
-                type="button"
-                className="btn-secondary"
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
-                onClick={() => navigate(deptSlug ? `/resolver/${deptSlug}` : '/resolver')}
-              >
-                Back to Queue
-              </button>
+          {/* Attachment */}
+          {ticket.attachment && (
+            <div className="content-section">
+              <div className="content-section__title">Attachment</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{ticket.attachment}</div>
             </div>
           )}
 
-          {validationError && (
-            <div style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              color: '#fca5a5',
-              padding: '1rem',
-              borderRadius: '6px',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              marginBottom: '1.5rem'
-            }}>
-              ⚠ {validationError}
+          {/* AI Suggested Resolution */}
+          {ticket.suggested_resolution ? (
+            <div className="resolution-section">
+              <div className="resolution-section__title">Suggested Resolution</div>
+              <div className="resolution-section__body markdown-body">
+                <ReactMarkdown>{ticket.suggested_resolution}</ReactMarkdown>
+              </div>
+              {kbSources && kbSources.length > 0 && (
+                <div className="resolution-section__sources">
+                  <div className="resolution-section__sources-label">Knowledge Base Sources</div>
+                  {kbSources.map((s, i) => (
+                    <span key={i} className="resolution-section__source-item">{s.source}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="content-section">
+              <div className="content-section__title">Suggested Resolution</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                {ticket.kb_message || 'No automated resolution found in the Knowledge Base.'}
+              </div>
             </div>
           )}
 
-          <form onSubmit={handleStatusSubmit}>
-            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-              <label style={{ color: '#e2e8f0', marginBottom: '0.5rem', fontWeight: 600 }}>
-                Status:
-              </label>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: '6px',
-                  background: '#0b0f1a',
-                  border: '1px solid #334155',
-                  color: '#ffffff',
-                  fontSize: '1rem'
-                }}
-              >
-                <option value="Open">Open</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Resolved">Resolved</option>
-                <option value="Rejected">Rejected</option>
-              </select>
+          {/* Previous resolver notes (In Progress) */}
+          {ticket.resolver_comment && ticket.status === 'In Progress' && (
+            <div className="alert alert--info">
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: '0.2rem', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Resolver Notes</div>
+                <div style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>{ticket.resolver_comment}</div>
+              </div>
             </div>
+          )}
 
-            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-              <label style={{ color: '#e2e8f0', marginBottom: '0.5rem', fontWeight: 600 }}>
-                {selectedStatus === 'Resolved'
-                  ? 'Resolution / Comments (Mandatory):'
-                  : selectedStatus === 'Rejected'
-                  ? 'Rejection Reason (Mandatory):'
-                  : selectedStatus === 'In Progress'
-                  ? 'Investigation / Progress Notes (Optional / Encouraged):'
-                  : 'Resolver Comments (Optional):'}
-              </label>
-              <textarea
-                rows="4"
-                placeholder={
-                  selectedStatus === 'Resolved'
-                    ? 'Describe how the issue was resolved (e.g., VPN configuration was reset and connection verified)...'
-                    : selectedStatus === 'Rejected'
-                    ? 'Explain why this ticket cannot be processed (e.g., Duplicate ticket, out of department scope)...'
-                    : 'Enter status updates or notes...'
-                }
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: '6px',
-                  background: '#0b0f1a',
-                  border: '1px solid #334155',
-                  color: '#ffffff',
-                  fontSize: '0.95rem',
-                  fontFamily: 'inherit'
-                }}
-              />
+          {/* Resolved / Rejected terminal state */}
+          {ticket.status === 'Resolved' && (
+            <div className="alert alert--success">
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>✓ Resolved</div>
+                <div style={{ fontSize: '0.83rem', whiteSpace: 'pre-wrap' }}>{ticket.resolver_comment || 'Ticket has been resolved.'}</div>
+              </div>
             </div>
+          )}
 
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => (deptSlug ? navigate(`/resolver/${deptSlug}`) : navigate('/resolver'))}
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-primary"
-                style={{ background: getButtonColor(), borderColor: getButtonColor() }}
-                disabled={submitting}
-              >
-                {getButtonText()}
-              </button>
+          {ticket.status === 'Rejected' && (
+            <div className="alert alert--error">
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>✕ Rejected</div>
+                <div style={{ fontSize: '0.83rem', whiteSpace: 'pre-wrap' }}>{ticket.resolver_comment || 'Ticket has been rejected.'}</div>
+              </div>
             </div>
-          </form>
+          )}
+
+          {/* Action panel — only for non-terminal tickets */}
+          {!isTerminal && (
+            <div className="action-panel">
+              <div className="action-panel__title">Update Ticket</div>
+
+              {actionSuccess && (
+                <div className="alert alert--success" style={{ marginBottom: '1rem' }}>
+                  <span>✓ {actionSuccess}</span>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    style={{ marginLeft: 'auto', fontSize: '0.8rem' }}
+                    onClick={() => navigate(deptSlug ? `/resolver/${deptSlug}` : '/resolver')}
+                  >
+                    Back to Queue
+                  </button>
+                </div>
+              )}
+
+              {validationError && (
+                <div className="alert alert--error" style={{ marginBottom: '1rem' }}>
+                  ⚠ {validationError}
+                </div>
+              )}
+
+              <form onSubmit={handleStatusSubmit}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="status-select">Status</label>
+                  <select
+                    id="status-select"
+                    className="form-select"
+                    value={selectedStatus}
+                    onChange={(e) => { setSelectedStatus(e.target.value); setValidationError(''); setActionSuccess(''); }}
+                  >
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="resolver-comment">
+                    {selectedStatus === 'Resolved' ? <>Resolution notes <span className="required">*</span></> :
+                     selectedStatus === 'Rejected' ? <>Rejection reason <span className="required">*</span></> :
+                     <>Notes <span className="optional">(optional)</span></>}
+                  </label>
+                  <textarea
+                    id="resolver-comment"
+                    className="form-textarea"
+                    rows="4"
+                    placeholder={
+                      selectedStatus === 'Resolved'
+                        ? 'Describe how the issue was resolved…'
+                        : selectedStatus === 'Rejected'
+                        ? 'Explain why this ticket cannot be processed…'
+                        : 'Add investigation notes or status updates…'
+                    }
+                    value={comment}
+                    onChange={(e) => { setComment(e.target.value); setValidationError(''); }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => navigate(deptSlug ? `/resolver/${deptSlug}` : '/resolver')}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={actionBtnClass()}
+                    disabled={submitting}
+                  >
+                    {actionBtnLabel()}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

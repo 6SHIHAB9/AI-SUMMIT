@@ -1,25 +1,24 @@
 import { useNavigate } from 'react-router-dom'
-import './Landing.css'
 
 const ROLES = [
   {
-    icon: '👤',
+    icon: '📋',
     title: 'Employee',
-    description: 'Raise a request and track it through to resolution.',
+    description: 'Submit and track your support tickets.',
     path: '/employee',
     accent: 'employee',
   },
   {
     icon: '🎫',
     title: 'Ticket Resolver',
-    description: 'Pick up incoming tickets and work them to a close.',
+    description: 'Work assigned tickets to resolution.',
     path: '/resolver',
     accent: 'resolver',
   },
   {
     icon: '🛡️',
-    title: 'Human-in-the-Loop Reviewer',
-    description: 'Review flagged tickets and approve, modify, or reject them when human oversight is required.',
+    title: 'HITL Reviewer',
+    description: 'Review flagged tickets requiring human approval.',
     path: '/review',
     accent: 'reviewer',
   },
@@ -30,35 +29,36 @@ export default function Landing() {
 
   return (
     <div className="landing">
-      <div className="landing__glow landing__glow--one" aria-hidden="true" />
-      <div className="landing__glow landing__glow--two" aria-hidden="true" />
-      <div className="landing__grid" aria-hidden="true" />
+      <div className="landing__inner">
 
-      <main className="landing__content">
-        <header className="landing__header">
-          <p className="landing__eyebrow">Enterprise Support System</p>
-          <h1 className="landing__title">Intelligent Helpdesk</h1>
-          <p className="landing__subtitle">AI-Powered Employee Support System</p>
-        </header>
+        <div className="landing__wordmark">
+          <span className="landing__wordmark-dot" />
+          TCS Enterprise Support
+        </div>
 
-        <h2 className="landing__choose">Choose your role</h2>
+        <h1 className="landing__title">IT Helpdesk</h1>
+        <p className="landing__subtitle">
+          Submit, track, and resolve IT support requests — powered by intelligent classification and routing.
+        </p>
 
-        <div className="role-grid">
+        <div className="landing__role-grid">
           {ROLES.map((role) => (
             <button
               key={role.path}
               type="button"
-              className={`role-card role-card--${role.accent}`}
+              className="role-card"
               onClick={() => navigate(role.path)}
             >
-              <span className="role-card__icon">{role.icon}</span>
+              <div className={`role-card__accent role-card__accent--${role.accent}`}>
+                {role.icon}
+              </div>
               <span className="role-card__title">{role.title}</span>
-              <span className="role-card__description">{role.description}</span>
-              <span className="role-card__path">{role.path}</span>
+              <span className="role-card__desc">{role.description}</span>
             </button>
           ))}
         </div>
-      </main>
+
+      </div>
     </div>
   )
 }

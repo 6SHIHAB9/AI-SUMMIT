@@ -1,13 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import './Resolver.css';
-import './Employee.css';
 import { slugToDepartment, DEPARTMENT_ICONS } from '../utils/departments.js';
+
+const statusBadgeClass = (status) => {
+  const map = {
+    'Open':           'badge badge--open',
+    'In Progress':    'badge badge--progress',
+    'Resolved':       'badge badge--resolved',
+    'Rejected':       'badge badge--rejected',
+    'Pending Review': 'badge badge--review',
+  };
+  return map[status] || 'badge';
+};
+
+const priorityColor = (p) => {
+  if (p === 'Critical') return 'var(--priority-critical-text)';
+  if (p === 'High')     return 'var(--priority-high-text)';
+  if (p === 'Low')      return 'var(--priority-low-text)';
+  return 'var(--priority-medium-text)';
+};
 
 export default function ResolverDepartmentTickets() {
   const { departmentSlug } = useParams();
   const navigate = useNavigate();
   const departmentName = slugToDepartment(departmentSlug);
+  const icon = DEPARTMENT_ICONS[departmentName] || '📁';
 
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,107 +34,79 @@ export default function ResolverDepartmentTickets() {
     const fetchTickets = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`http://localhost:8000/resolver/tickets/${departmentSlug}`);
-        if (!response.ok) {
-          throw new Error('Failed to load tickets for this department');
-        }
-        const data = await response.json();
-        // Defensive filter ensuring only Open or In Progress tickets appear
-        const activeTickets = data.filter(
-          (t) => t.status === 'Open' || t.status === 'In Progress'
-        );
-        setTickets(activeTickets);
-      } catch (err) {
+        const res = await fetch(`http://localhost:8000/resolver/tickets/${departmentSlug}`);
+        if (!res.ok) throw new Error('Failed to load tickets for this department');
+        const data = await res.json();
+        setTickets(data.filter((t) => t.status === 'Open' || t.status === 'In Progress'));
+      } catch {
         setError('Unable to load department tickets.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchTickets();
   }, [departmentSlug]);
 
-  const formatDate = (isoString) => {
-    if (!isoString) return '';
-    return isoString.split('T')[0];
+  const formatDate = (iso) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
-
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'In Progress':
-        return 'status-in-progress';
-      case 'Open':
-        return 'status-open';
-      case 'Resolved':
-        return 'status-resolved';
-      case 'Rejected':
-        return 'priority-critical';
-      default:
-        return 'status-open';
-    }
-  };
-
-  const icon = DEPARTMENT_ICONS[departmentName] || '📁';
 
   return (
-    <div className="resolver-layout">
-      <div style={{ marginBottom: '1.5rem' }}>
-        <Link
-          to="/resolver"
-          className="btn-back"
-          style={{ color: '#2dd6be', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          ← Back to Departments
+    <div className="page">
+      <nav className="topbar">
+        <Link to="/" className="topbar__logo">
+          <span className="topbar__logo-dot" />
+          IT Helpdesk
         </Link>
-      </div>
-
-      <header className="resolver-header">
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '2rem' }}>{icon}</span>
-            <h1 style={{ margin: 0 }}>{departmentName} Queue</h1>
-          </div>
-          <p>Tickets assigned and awaiting support resolution</p>
-        </div>
+        <div className="topbar__divider" />
+        <span className="topbar__section">Ticket Resolver</span>
+        <div className="topbar__spacer" />
         {!loading && !error && (
-          <div className="resolver-badge-count">
-            {tickets.length} Active {tickets.length === 1 ? 'Ticket' : 'Tickets'}
-          </div>
+          <span className="stat-chip" style={{ marginRight: '0.4rem' }}>
+            {tickets.length} active
+          </span>
         )}
-      </header>
+        <button className="topbar__nav-back" onClick={() => navigate('/resolver')}>
+          ← Departments
+        </button>
+      </nav>
 
-      <section className="tickets-section">
+      <div className="main-content main-content--wide">
+        <div className="page-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ fontSize: '1.3rem' }}>{icon}</span>
+            <div>
+              <h1 className="page-header__title">{departmentName}</h1>
+              <p className="page-header__subtitle">Open and in-progress tickets awaiting resolution</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Loading skeletons */}
         {loading && (
-          <div className="centered-message">
-            <p>Loading queue...</p>
+          <div className="ticket-list">
+            {[1,2,3].map(i => (
+              <div key={i} style={{ padding: '1rem 1.1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+                <div className="skeleton skeleton-line skeleton-line--short" />
+                <div className="skeleton skeleton-line skeleton-line--medium" style={{ marginTop: '0.5rem' }} />
+                <div className="skeleton skeleton-line skeleton-line--full" style={{ marginTop: '0.5rem' }} />
+              </div>
+            ))}
           </div>
         )}
 
         {error && !loading && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.15)',
-            color: '#fca5a5',
-            padding: '1rem 1.25rem',
-            borderRadius: '8px',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            marginBottom: '2rem'
-          }}>
-            {error}
-          </div>
+          <div className="alert alert--error">{error}</div>
         )}
 
         {!loading && !error && tickets.length === 0 && (
-          <div className="centered-message" style={{ marginTop: '3rem' }}>
-            <h3>No pending tickets</h3>
-            <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>
-              All tickets for {departmentName} have been resolved or rejected.
-            </p>
-            <button
-              className="btn-secondary"
-              style={{ marginTop: '1.5rem' }}
-              onClick={() => navigate('/resolver')}
-            >
-              Return to Resolver Landing
+          <div className="empty-state">
+            <div className="empty-state__icon">✅</div>
+            <div className="empty-state__title">Queue cleared</div>
+            <div className="empty-state__body">All tickets for {departmentName} have been resolved or rejected.</div>
+            <button className="btn btn--secondary" style={{ marginTop: '1rem' }} onClick={() => navigate('/resolver')}>
+              ← Back to Departments
             </button>
           </div>
         )}
@@ -127,55 +116,43 @@ export default function ResolverDepartmentTickets() {
             {tickets.map((ticket) => (
               <div
                 key={ticket.ticket_id}
-                className="resolver-ticket-card"
+                className="ticket-row"
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate(`/resolver/ticket/${ticket.ticket_id}`)}
-                style={{ cursor: 'pointer' }}
+                onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/resolver/ticket/${ticket.ticket_id}`); }}
               >
-                <div className="resolver-ticket-card-top">
-                  <span className="resolver-ticket-id">{ticket.ticket_id}</span>
-                  <span className="ticket-date" style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
-                    Created: {formatDate(ticket.created_at)}
-                  </span>
-                </div>
-
-                <h3 className="resolver-ticket-subject">{ticket.subject}</h3>
-
-                <div className="resolver-meta-row">
-                  <span><strong>Raised By:</strong> {ticket.raised_by}</span>
-                  <span><strong>Category:</strong> {ticket.category || 'N/A'} {ticket.sub_category && `(${ticket.sub_category})`}</span>
-                  <span><strong>Priority:</strong> {ticket.priority || 'N/A'}</span>
-                </div>
-
-
-
-                <div className="ticket-card-bottom" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid #1e293b' }}>
-                  <div className="ticket-badges">
-                    <span className={`badge ${getStatusBadgeClass(ticket.status)}`}>
-                      {ticket.status.toUpperCase()}
+                <div className="ticket-row__main">
+                  <div className="ticket-row__id">{ticket.ticket_id}</div>
+                  <div className="ticket-row__subject">{ticket.subject}</div>
+                  <div className="ticket-row__meta">
+                    <span className="ticket-row__meta-item">{ticket.raised_by}</span>
+                    <span className="ticket-row__meta-item">{ticket.category || 'Uncategorized'}</span>
+                    {ticket.sub_category && (
+                      <span className="ticket-row__meta-item" style={{ color: 'var(--text-muted)' }}>{ticket.sub_category}</span>
+                    )}
+                    <span className="ticket-row__meta-item">
+                      <span style={{ color: priorityColor(ticket.priority), fontWeight: 700, fontSize: '0.75rem' }}>
+                        ● {ticket.priority || 'Medium'}
+                      </span>
                     </span>
                     {ticket.resolver_comment && (
-                      <span className="badge" style={{ background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}>
-                        Has Resolver Note
+                      <span className="ticket-row__meta-item" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        Has notes
                       </span>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    style={{ padding: '0.4rem 1rem', fontSize: '0.875rem', background: '#2563eb' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/resolver/ticket/${ticket.ticket_id}`);
-                    }}
-                  >
-                    View Ticket
-                  </button>
                 </div>
+                <div className="ticket-row__aside">
+                  <span className={statusBadgeClass(ticket.status)}>{ticket.status}</span>
+                  <span className="ticket-row__date">{formatDate(ticket.created_at)}</span>
+                </div>
+                <span className="ticket-row__chevron">›</span>
               </div>
             ))}
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import './Employee.css';
+
+const statusBadgeClass = (status) => {
+  switch (status) {
+    case 'Open':           return 'badge badge--open';
+    case 'In Progress':    return 'badge badge--progress';
+    case 'Resolved':       return 'badge badge--resolved';
+    case 'Rejected':       return 'badge badge--rejected';
+    case 'Pending Review': return 'badge badge--review';
+    default:               return 'badge';
+  }
+};
+
+const priorityColor = (priority) => {
+  switch (priority) {
+    case 'Critical': return 'var(--priority-critical-text)';
+    case 'High':     return 'var(--priority-high-text)';
+    case 'Low':      return 'var(--priority-low-text)';
+    default:         return 'var(--priority-medium-text)';
+  }
+};
 
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
@@ -12,116 +31,122 @@ const EmployeeDashboard = () => {
     const fetchTickets = async () => {
       try {
         const response = await fetch('http://localhost:8000/tickets');
-        if (!response.ok) {
-          throw new Error('Failed to fetch tickets');
-        }
+        if (!response.ok) throw new Error('Failed to fetch tickets');
         const data = await response.json();
-        
-        const filteredTickets = data.filter(
-          (ticket) => ticket.raised_by === 'employee@tcs.com'
-        );
-        setTickets(filteredTickets);
-      } catch (err) {
+        setTickets(data.filter((t) => t.raised_by === 'employee@tcs.com'));
+      } catch {
         setError('Unable to load tickets. Please make sure the backend is running.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchTickets();
   }, []);
 
-  const formatDate = (isoString) => {
-    if (!isoString) return '';
-    return isoString.split('T')[0];
+  const formatDate = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   return (
-    <div className="employee-layout">
-      <header className="employee-header">
-        <div className="header-titles">
-          <h1>Employee Dashboard</h1>
-          <p>View and manage your support requests</p>
+    <div className="page">
+      {/* Topbar */}
+      <nav className="topbar">
+        <Link to="/" className="topbar__logo">
+          <span className="topbar__logo-dot" />
+          IT Helpdesk
+        </Link>
+        <div className="topbar__divider" />
+        <span className="topbar__section">My Tickets</span>
+        <div className="topbar__spacer" />
+        <Link to="/" className="topbar__nav-back">← Home</Link>
+      </nav>
+
+      <div className="main-content">
+        {/* Page header */}
+        <div className="page-header">
+          <div>
+            <h1 className="page-header__title">My Tickets</h1>
+            <p className="page-header__subtitle">Track and manage your support requests</p>
+          </div>
+          <button
+            className="btn btn--primary btn--lg"
+            onClick={() => navigate('/employee/new-ticket')}
+          >
+            + New Ticket
+          </button>
         </div>
-        <button 
-          className="btn-primary new-ticket-btn"
-          onClick={() => navigate('/employee/new-ticket')}
-        >
-          + New Ticket
-        </button>
-      </header>
 
-      <section className="tickets-section">
-        <h2>My Tickets</h2>
-
+        {/* Loading */}
         {loading && (
-          <div className="centered-message" style={{ marginTop: '2rem' }}>
-            <p>Loading tickets...</p>
-          </div>
-        )}
-
-        {error && !loading && (
-          <div style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', padding: '1rem', borderRadius: '6px', margin: '1rem 0', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-            {error}
-          </div>
-        )}
-
-        {!loading && !error && tickets.length === 0 && (
-          <div className="centered-message" style={{ marginTop: '2rem' }}>
-            <h3>No tickets yet</h3>
-            <button 
-              className="btn-primary" 
-              style={{ marginTop: '1rem' }}
-              onClick={() => navigate('/employee/new-ticket')}
-            >
-              + Create Your First Ticket
-            </button>
-          </div>
-        )}
-
-        {!loading && !error && tickets.length > 0 && (
-          <div className="ticket-list">
-            {tickets.map((ticket) => (
-              <div 
-                key={ticket.ticket_id} 
-                className="ticket-card"
-                onClick={() => navigate(`/employee/ticket/${ticket.ticket_id}`)}
-              >
-                <div className="ticket-card-top">
-                  <span className="ticket-id">{ticket.ticket_id}</span>
-                  <span className="ticket-date">{formatDate(ticket.created_at)}</span>
-                </div>
-                
-                <h3 className="ticket-subject">{ticket.subject}</h3>
-                
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
-                  <span><strong>Category:</strong> {ticket.category || 'N/A'} {ticket.sub_category && `(${ticket.sub_category})`}</span>
-                  <span><strong>Priority:</strong> {ticket.priority || 'N/A'}</span>
-                  <span><strong>Urgency:</strong> {ticket.urgency || 'N/A'}</span>
-                  <span><strong>Sentiment:</strong> {ticket.sentiment || 'N/A'}</span>
-                </div>
-
-                <div className="ticket-card-bottom">
-                  <div className="ticket-badges">
-                    <span className={`badge status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}`}>
-                      {ticket.status}
-                    </span>
-                    {ticket.human_approval_required && ticket.status === 'Pending Review' ? (
-                      <span className="badge" style={{ background: '#7f1d1d', color: '#fca5a5' }}>HUMAN REVIEW REQUIRED</span>
-                    ) : null}
-                  </div>
-                  <span className="ticket-department">
-                    {ticket.routed_to || 'Unassigned'}
-                  </span>
-                </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {[1,2,3].map(i => (
+              <div key={i} style={{ padding: '1rem 1.1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+                <div className="skeleton skeleton-line skeleton-line--short" />
+                <div className="skeleton skeleton-line skeleton-line--medium" style={{ marginTop: '0.5rem' }} />
+                <div className="skeleton skeleton-line skeleton-line--full" style={{ marginTop: '0.5rem' }} />
               </div>
             ))}
           </div>
         )}
-      </section>
 
-      <div className="back-link" style={{ marginTop: '2rem' }}>
-        <Link to="/" style={{ color: '#94a3b8', textDecoration: 'none' }}>← Back to Home</Link>
+        {/* Error */}
+        {error && !loading && (
+          <div className="alert alert--error">{error}</div>
+        )}
+
+        {/* Empty */}
+        {!loading && !error && tickets.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state__icon">📭</div>
+            <div className="empty-state__title">No tickets yet</div>
+            <div className="empty-state__body">You haven't submitted any support tickets. Create one to get started.</div>
+            <button className="btn btn--primary" style={{ marginTop: '1.1rem' }} onClick={() => navigate('/employee/new-ticket')}>
+              Create First Ticket
+            </button>
+          </div>
+        )}
+
+        {/* Ticket list */}
+        {!loading && !error && tickets.length > 0 && (
+          <div className="ticket-list">
+            {tickets.map((ticket) => (
+              <div
+                key={ticket.ticket_id}
+                className="ticket-row"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/employee/ticket/${ticket.ticket_id}`)}
+                onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/employee/ticket/${ticket.ticket_id}`); }}
+              >
+                <div className="ticket-row__main">
+                  <div className="ticket-row__id">{ticket.ticket_id}</div>
+                  <div className="ticket-row__subject">{ticket.subject}</div>
+                  <div className="ticket-row__meta">
+                    <span className="ticket-row__meta-item">{ticket.category || 'Uncategorized'}</span>
+                    {ticket.sub_category && (
+                      <span className="ticket-row__meta-item" style={{ color: 'var(--text-muted)' }}>
+                        {ticket.sub_category}
+                      </span>
+                    )}
+                    <span className="ticket-row__meta-item">
+                      <span style={{ color: priorityColor(ticket.priority), fontWeight: 700, fontSize: '0.75rem' }}>
+                        ● {ticket.priority || 'Medium'}
+                      </span>
+                    </span>
+                    <span className="ticket-row__meta-item">{ticket.routed_to || 'Unassigned'}</span>
+                  </div>
+                </div>
+                <div className="ticket-row__aside">
+                  <span className={statusBadgeClass(ticket.status)}>{ticket.status}</span>
+                  <span className="ticket-row__date">{formatDate(ticket.created_at)}</span>
+                </div>
+                <span className="ticket-row__chevron">›</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
