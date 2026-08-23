@@ -71,7 +71,12 @@ const NewTicket = () => {
                <h3 style={{ color: '#93c5fd', margin: '0 0 0.5rem 0' }}>AI Suggested Resolution</h3>
                <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#f8fafc' }}>{submittedTicket.suggested_resolution}</p>
              </div>
-          ) : null}
+          ) : (
+             <div style={{ background: 'rgba(100, 116, 139, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.3)', marginTop: '1.5rem' }}>
+               <h3 style={{ color: '#94a3b8', margin: '0 0 0.5rem 0' }}>AI Resolution Unavailable</h3>
+               <p style={{ margin: 0, color: '#f8fafc' }}>{submittedTicket.kb_message || 'No relevant resolution was found in the Knowledge Base.'}</p>
+             </div>
+          )}
 
           <div style={{ marginTop: '2rem', textAlign: 'center' }}>
             <button className="btn-primary" onClick={() => navigate('/employee')}>

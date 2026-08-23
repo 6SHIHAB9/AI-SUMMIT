@@ -66,6 +66,9 @@ class TicketResponse(BaseModel):
     urgency: Optional[str] = None
     confidence: Optional[float] = None
     suggested_resolution: Optional[str] = None
+    kb_match: Optional[bool] = None
+    kb_sources: Optional[str] = None
+    kb_message: Optional[str] = None
     human_approval_required: bool
     approval_reason: Optional[str] = None
     routed_to: Optional[str] = None

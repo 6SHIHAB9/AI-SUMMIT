@@ -240,10 +240,15 @@ export default function ResolverTicketDetails() {
         )}
 
         {/* AI Suggested Resolution */}
-        {ticket.suggested_resolution && (
+        {ticket.suggested_resolution ? (
           <div className="resolver-ai-box" style={{ margin: '1.5rem 0' }}>
             <h4>🤖 AI Suggested Troubleshooting Resolution</h4>
             <p>{ticket.suggested_resolution}</p>
+          </div>
+        ) : (
+          <div className="resolver-ai-box" style={{ margin: '1.5rem 0', background: 'rgba(100, 116, 139, 0.15)', borderColor: 'rgba(100, 116, 139, 0.3)' }}>
+            <h4 style={{ color: '#94a3b8' }}>🤖 AI Resolution Unavailable</h4>
+            <p>{ticket.kb_message || 'No relevant resolution was found in the Knowledge Base.'}</p>
           </div>
         )}
 

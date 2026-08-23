@@ -125,10 +125,15 @@ const TicketDetails = () => {
           </div>
         )}
 
-        {ticket.suggested_resolution && !ticket.human_approval_required && (
+        {!ticket.human_approval_required && ticket.suggested_resolution ? (
           <div style={{ background: 'rgba(59, 130, 246, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', marginTop: '2rem' }}>
             <h3 style={{ color: '#93c5fd', marginTop: 0, marginBottom: '0.5rem' }}>AI Suggested Resolution</h3>
             <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>{ticket.suggested_resolution}</p>
+          </div>
+        ) : !ticket.human_approval_required && (
+          <div style={{ background: 'rgba(100, 116, 139, 0.15)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.3)', marginTop: '2rem' }}>
+            <h3 style={{ color: '#94a3b8', marginTop: 0, marginBottom: '0.5rem' }}>AI Resolution Unavailable</h3>
+            <p style={{ margin: 0, color: '#f8fafc', whiteSpace: 'pre-wrap' }}>{ticket.kb_message || 'No relevant resolution was found in the Knowledge Base.'}</p>
           </div>
         )}
 

@@ -23,6 +23,14 @@ ensure_schema_columns()
 
 app = FastAPI(title="Intelligent Helpdesk API")
 
+@app.on_event("startup")
+def startup_event():
+    import threading
+    from ingest_kb import ingest_kb
+    print("Starting background task to ingest Knowledge Base...")
+    # Run ingestion in a background thread so it doesn't block the server startup
+    threading.Thread(target=ingest_kb, daemon=True).start()
+
 def resolve_department(dept_str: str):
     """Matches a department name from string or slug format."""
     for d in DEPARTMENTS:
@@ -63,8 +71,23 @@ def create_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
     human_approval = bool(ai_data.get("human_approval_required", False))
     status = "Pending Review" if human_approval else "Open"
     routed_to = HUMAN_REVIEW if human_approval else ai_data.get("routed_to", DEFAULT_DEPARTMENT)
-    suggested_resolution = None if human_approval else ai_data.get("suggested_resolution")
     approval_reason = ai_data.get("approval_reason") if human_approval else None
+
+    # STAGE 2 & 3: RAG Knowledge Retrieval & Resolution
+    kb_match = False
+    kb_sources_json = None
+    suggested_resolution = None
+    kb_message = None
+    
+    if not human_approval:
+        from rag.generator import generate_rag_resolution
+        rag_resolution, is_match, kb_sources = generate_rag_resolution(ticket.subject, ticket.description)
+        if is_match:
+            kb_match = True
+            kb_sources_json = json.dumps(kb_sources)
+            suggested_resolution = rag_resolution
+        else:
+            kb_message = "No relevant resolution found in the Knowledge Base."
 
     db_ticket = models.Ticket(
         ticket_id=new_ticket_id,
@@ -80,6 +103,9 @@ def create_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
         urgency=ai_data.get("urgency", "Medium"),
         confidence=ai_data.get("confidence", 0.90),
         suggested_resolution=suggested_resolution,
+        kb_match=kb_match,
+        kb_sources=kb_sources_json,
+        kb_message=kb_message,
         human_approval_required=human_approval,
         approval_reason=approval_reason,
         routed_to=routed_to
